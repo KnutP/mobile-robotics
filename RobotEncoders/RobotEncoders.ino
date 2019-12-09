@@ -202,7 +202,8 @@ void move1(int dir, int amt) {
 }
 
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The goToAngle function takes in an angle in degrees (positive values are left, negative are right),
+  then spins the robot to that angle.
 */
 void goToAngle(int angle) {
   
@@ -222,7 +223,9 @@ void goToAngle(int angle) {
 }
 
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The goToGoal function takes in coordinates x and y in inches,
+  the drives to that location by first turning to the correct angle
+  and then driving forward.
 */
 void goToGoal(int x, int y) {
   double thetaD = atan2(y,x);
@@ -232,7 +235,8 @@ void goToGoal(int x, int y) {
 }
 
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The moveSquare function takes in a side length in inches,
+  then drives the robot in a square with sides of that length.
 */
 void moveSquare(int side) {
   for(int i = 0; i<4; i++){
@@ -265,7 +269,8 @@ void runToStop ( void ) {
 }
 
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The forward function takes in a distance to drive in inches,
+  then drives forward that distance.
 */
 void forward(int distance) {
   int ticksPerInch = 76;

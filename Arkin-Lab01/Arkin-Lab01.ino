@@ -317,14 +317,15 @@ void runAtSpeed ( void ) {
 }
 
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The pivot method takes in an angle in degrees (positive values are left, negative are right),
+  then pivots the robot to that angle by running either the left or right motor forward.
 */
-void pivot(int direction, int angle) {
+void pivot(int angle) {
 
   double ticksPerDegree = 11.35;
   int ticksToDrive = (int)(angle*ticksPerDegree);
 
-  if(direction == 1){
+  if(angle > 0){
     digitalWrite(redLED, LOW);//turn off red LED
     digitalWrite(grnLED, HIGH);//turn on green LED
     digitalWrite(ylwLED, LOW);//turn off yellow LED
@@ -345,7 +346,8 @@ void pivot(int direction, int angle) {
 }
 
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The spin function takes in an angle in degrees (positive values are left, negative are right),
+  then spins the robot to that angle.
 */
 void spin(int angle) {
 
@@ -373,7 +375,8 @@ void turn(int direction, double diameter, double angle) {
 
 }
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The reverse function takes in a distance to drive in inches,
+  then drives forward that distance.
 */
 void forward(int distance) {
   int ticksPerInch = 76;
@@ -393,22 +396,26 @@ void forward(int distance) {
   
 }
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The reverse function takes in a distance to drive in inches,
+  then drives backward that distance.
 */
 void reverse(int distance) {
   forward(-distance);
 }
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The stop function stops the robot's motors.
 */
 void stop() {
+  stepperRight.stop();//stop right motor
+  stepperLeft.stop();//stop left motor
 }
 
 
 
 
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The moveCircle function takes in a diameter in inches and a direction integer (1 for left, -1 for right).
+  The robot will then drive in a circle of the given diameter in the given direction.
 */
 void moveCircle(int diam, int dir) {
   double robotWidth = 8.5; // inches
