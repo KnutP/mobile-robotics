@@ -134,7 +134,9 @@ void setup() {
   digitalWrite(ylwLED, LOW);
   delay(500);
 
-  goToGoal(12, -12);
+   goToAngle(90);
+//  goToGoal(12,12);
+//  moveSquare(24);
 
 }
 
@@ -210,16 +212,19 @@ void goToAngle(int angle) {
   double ticksPerDegree = 5.75;
   int ticksToDrive = (int)(angle*ticksPerDegree);
 
-  digitalWrite(redLED, LOW);//turn off red LED
+  //digitalWrite(redLED, LOW);//turn off red LED
   digitalWrite(grnLED, HIGH);//turn on green LED
-  digitalWrite(ylwLED, LOW);//turn off yellow LED
-  stepperRight.move(ticksToDrive);//set distance for right wheel to move
-  stepperLeft.move(-ticksToDrive);//set distance for left wheel to move
-  stepperRight.setSpeed(1000);//set right motor speed
-  stepperLeft.setSpeed(1000);//set left motor speed
+  //digitalWrite(ylwLED, LOW);//turn off yellow LED
+  stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+  stepperRight.setCurrentPosition(0);//set right wheel position to zero
+  stepperRight.setSpeed(300);//set right motor speed
+  stepperLeft.setSpeed(300);//set left motor speed
+  stepperRight.moveTo(ticksToDrive);//set distance for right wheel to move
+  stepperLeft.moveTo(-ticksToDrive);//set distance for left wheel to move
   stepperRight.runSpeedToPosition();//move right motor
   stepperLeft.runSpeedToPosition();//move left motor
   runToStop();//run until the robot reaches the target
+  
 }
 
 /*
@@ -228,10 +233,14 @@ void goToAngle(int angle) {
   and then driving forward.
 */
 void goToGoal(int x, int y) {
+  digitalWrite(redLED, LOW);//turn on red LED
+  digitalWrite(grnLED, LOW);//turn off green LED
+  digitalWrite(ylwLED, HIGH);//turn off yellow LED
   double thetaD = atan2(y,x);
   goToAngle(thetaD*180/3.14159265358);
   int distance = sqrt((x*x)+(y*y));
   forward(distance);
+ 
 }
 
 /*
@@ -239,6 +248,9 @@ void goToGoal(int x, int y) {
   then drives the robot in a square with sides of that length.
 */
 void moveSquare(int side) {
+  digitalWrite(redLED, HIGH);//turn on red LED
+ // digitalWrite(grnLED, LOW);//turn off green LED
+  digitalWrite(ylwLED, HIGH);//turn off yellow LED
   for(int i = 0; i<4; i++){
     forward(side);
     goToAngle(90);
@@ -275,11 +287,6 @@ void runToStop ( void ) {
 void forward(int distance) {
   int ticksPerInch = 76;
   int ticksToDrive = distance*ticksPerInch;
-  
-  digitalWrite(redLED, LOW);//turn off red LED
-  digitalWrite(grnLED, HIGH);//turn on green LED
-  digitalWrite(ylwLED, LOW);//turn off yellow LED
-  
   stepperRight.move(ticksToDrive);//move one full rotation forward relative to current position
   stepperLeft.move(ticksToDrive);//move one full rotation forward relative to current position
   stepperRight.setSpeed(1000);//set right motor speed

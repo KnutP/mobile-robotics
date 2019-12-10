@@ -52,6 +52,7 @@
 
 #include <AccelStepper.h>//include the stepper motor library
 #include <MultiStepper.h>//include multiple stepper motor library
+#include <math.h>
 
 //define pin numbers
 const int rtStepPin = 50; //right stepper motor step pin (pin 44 for wireless)
@@ -123,12 +124,18 @@ void setup()
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, LOW);
   delay(500);
-  //spin(1, 360);
-  //reverse(12);
-  //pivot(1, 360);
-  //forward(12);
-  moveCircle(24, -1);
-  //moveFigure8(24, -1);
+  
+//  forward(1200);
+//  delay(5000);
+//  reverse(12);
+//  delay(5000);
+//  spin(360);
+//  delay(5000);
+//  pivot(360);
+//  delay(5000);
+//  moveCircle(24, 1);
+//  delay(5000);
+  moveFigure8(36, 1);
 
 }
 
@@ -322,8 +329,11 @@ void runAtSpeed ( void ) {
 */
 void pivot(int angle) {
 
-  double ticksPerDegree = 11.35;
-  int ticksToDrive = (int)(angle*ticksPerDegree);
+  double ticksPerDegree = 11.32;
+  int ticksToDrive = (int)(abs(angle)*ticksPerDegree);
+
+  stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+  stepperRight.setCurrentPosition(0);//set right wheel position to zero
 
   if(angle > 0){
     digitalWrite(redLED, LOW);//turn off red LED
@@ -351,16 +361,18 @@ void pivot(int angle) {
 */
 void spin(int angle) {
 
-  double ticksPerDegree = 5.6;
+  double ticksPerDegree = 5.75;
   int ticksToDrive = (int)(angle*ticksPerDegree);
 
   digitalWrite(redLED, LOW);//turn off red LED
   digitalWrite(grnLED, HIGH);//turn on green LED
   digitalWrite(ylwLED, LOW);//turn off yellow LED
+  stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+  stepperRight.setCurrentPosition(0);//set right wheel position to zero
   stepperRight.moveTo(ticksToDrive);//set distance for right wheel to move
   stepperLeft.moveTo(-ticksToDrive);//set distance for left wheel to move
-  stepperRight.setSpeed(1000);//set right motor speed
-  stepperLeft.setSpeed(1000);//set left motor speed
+  stepperRight.setSpeed(300);//set right motor speed
+  stepperLeft.setSpeed(300);//set left motor speed
   stepperRight.runSpeedToPosition();//move right motor
   stepperLeft.runSpeedToPosition();//move left motor
   runToStop();//run until the robot reaches the target
@@ -370,12 +382,20 @@ void spin(int angle) {
 /*
   INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
 */
-void turn(int direction, double diameter, double angle) {
-
+void turn(double leftSpeed, double rightSpeed, int leftPulses, int rightPulses) {
+    stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+    stepperRight.setCurrentPosition(0);//set right wheel position to zero
+    long positions[2];
+    positions[0] = leftPulses;
+    positions[1] = rightPulses;
+    stepperLeft.setSpeed(leftSpeed);
+    stepperRight.setSpeed(rightSpeed);
+    steppers.moveTo(positions);
+    steppers.runSpeedToPosition();
 
 }
 /*
-  The reverse function takes in a distance to drive in inches,
+  The forward function takes in a distance to drive in inches,
   then drives forward that distance.
 */
 void forward(int distance) {
@@ -385,7 +405,9 @@ void forward(int distance) {
   digitalWrite(redLED, LOW);//turn off red LED
   digitalWrite(grnLED, HIGH);//turn on green LED
   digitalWrite(ylwLED, LOW);//turn off yellow LED
-  
+
+  stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+  stepperRight.setCurrentPosition(0);//set right wheel position to zero
   stepperRight.moveTo(ticksToDrive);//move one full rotation forward relative to current position
   stepperLeft.moveTo(ticksToDrive);//move one full rotation forward relative to current position
   stepperRight.setSpeed(1000);//set right motor speed
@@ -418,6 +440,11 @@ void stop() {
   The robot will then drive in a circle of the given diameter in the given direction.
 */
 void moveCircle(int diam, int dir) {
+
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, LOW);
+  //digitalWrite(ylwLED, LOW);
+  
   double robotWidth = 8.5; // inches
   double cWheel = 10.75; // inches
   double innerR = (diam/2) - (robotWidth/2);
@@ -436,26 +463,27 @@ void moveCircle(int diam, int dir) {
   int tickDifferential = 280;
 
   if(dir == 1){
-    stepperLeft.setCurrentPosition(0);//set left wheel position to zero
-    stepperRight.setCurrentPosition(0);//set right wheel position to zero
-    
-    long positions[2];
-    positions[0] = outerPulses;
-    positions[1] = innerPulses+tickDifferential;
-    stepperLeft.setSpeed(outerSpeed);
-    stepperRight.setSpeed(innerSpeed);
-    steppers.moveTo(positions);
-    steppers.runSpeedToPosition();
+    turn(outerSpeed, innerSpeed, outerPulses, innerPulses+tickDifferential);
+//    stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+//    stepperRight.setCurrentPosition(0);//set right wheel position to zero
+//    long positions[2];
+//    positions[0] = outerPulses;
+//    positions[1] = innerPulses+tickDifferential;
+//    stepperLeft.setSpeed(outerSpeed);
+//    stepperRight.setSpeed(innerSpeed);
+//    steppers.moveTo(positions);
+//    steppers.runSpeedToPosition();
   }else{
-    stepperLeft.setCurrentPosition(0);//set left wheel position to zero
-    stepperRight.setCurrentPosition(0);//set right wheel position to zero
-    long positions[2];
-    positions[0] = innerPulses+tickDifferential;
-    positions[1] = outerPulses;
-    stepperLeft.setSpeed(innerSpeed);
-    stepperRight.setSpeed(outerSpeed);
-    steppers.moveTo(positions);
-    steppers.runSpeedToPosition();
+        turn(innerSpeed, outerSpeed, innerPulses+tickDifferential, outerPulses);
+//    stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+//    stepperRight.setCurrentPosition(0);//set right wheel position to zero
+//    long positions[2];
+//    positions[0] = innerPulses+tickDifferential;
+//    positions[1] = outerPulses;
+//    stepperLeft.setSpeed(innerSpeed);
+//    stepperRight.setSpeed(outerSpeed);
+//    steppers.moveTo(positions);
+//    steppers.runSpeedToPosition();
   }
 }
 
@@ -464,6 +492,10 @@ void moveCircle(int diam, int dir) {
   twice with 2 different direcitons to create a figure 8 with circles of the given diameter.
 */
 void moveFigure8(int diam, int dir){
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, HIGH);
+
   moveCircle(diam, dir);
   delay(250);
   moveCircle(diam, -dir);
