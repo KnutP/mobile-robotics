@@ -125,22 +125,58 @@ void setup()
   digitalWrite(ylwLED, LOW);
   delay(500);
   
-//  forward(1200);
-//  delay(5000);
-//  reverse(12);
-//  delay(5000);
-//  spin(360);
-//  delay(5000);
-//  pivot(360);
-//  delay(5000);
-//  moveCircle(24, 1);
-//  delay(5000);
-  moveFigure8(36, 1);
+
 
 }
 
 void loop()
 {
+//
+//  forward(12);
+//  delay(5000);
+//  reverse(12);
+//  delay(5000);
+//  spin(90);
+//  delay(5000);
+//  spin(-90);
+//  delay(5000);
+//  pivot(90);
+//  delay(5000);
+//  pivot(-90);
+//  delay(5000);
+//
+//  double diam = 20;
+//  double robotWidth = 8.5; // inches
+//  double cWheel = 10.75; // inches
+//  double innerR = (diam/2) - (robotWidth/2);
+//  double outerR = (diam/2) + (robotWidth/2);
+//
+//  double angle = 90;
+//  double angleDifferential = 1.1;
+//  
+//  double arcOuter = angleDifferential*angle*(3.14159265358/180)*outerR; // solve for distance each wheel needs to travel
+//  double arcInner = angleDifferential*angle*(3.14159265358/180)*innerR;
+//  double innerPulses = arcInner*(1/cWheel)*(800); //solve for pulses each motor needs to go
+//  double outerPulses = arcOuter*(1/cWheel)*(800); //800 pulses per rotation
+//  int outerSpeed = 2000; // pulses per second (pick a speed to base the other one off of)
+//  int driveTime = outerPulses/outerSpeed; // seconds
+//  int innerSpeed = innerPulses/driveTime; // pulses per second
+//
+//  int tickDifferential = 280;
+//
+//  turn(innerSpeed, outerSpeed, innerPulses+tickDifferential, outerPulses);
+//  delay(5000);
+//  turn(outerSpeed, innerSpeed, outerPulses, innerPulses+tickDifferential);
+//  delay(5000);
+
+  //moveCircle(12, 1);
+  //delay(5000);
+
+//  moveFigure8(24, 1);
+//  delay(5000);
+  moveFigure8(48, 1);
+  delay(5000);
+  
   //uncomment each function one at a time to see what the code does
   //move1();//call move back and forth function
   //move2();//call move back and forth function with AccelStepper library functions
@@ -390,6 +426,8 @@ void turn(double leftSpeed, double rightSpeed, int leftPulses, int rightPulses) 
     positions[1] = rightPulses;
     stepperLeft.setSpeed(leftSpeed);
     stepperRight.setSpeed(rightSpeed);
+    stepperLeft.setMaxSpeed(leftSpeed);
+    stepperRight.setMaxSpeed(rightSpeed);
     steppers.moveTo(positions);
     steppers.runSpeedToPosition();
 
@@ -450,7 +488,7 @@ void moveCircle(int diam, int dir) {
   double innerR = (diam/2) - (robotWidth/2);
   double outerR = (diam/2) + (robotWidth/2);
 
-  double angleDifferential = 1.1;
+  double angleDifferential = 1.16;
   
   double arcOuter = angleDifferential*2*3.14159265358*outerR; // solve for distance each wheel needs to travel
   double arcInner = angleDifferential*2*3.14159265358*innerR;

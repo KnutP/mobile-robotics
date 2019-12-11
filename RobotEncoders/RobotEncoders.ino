@@ -134,7 +134,7 @@ void setup() {
   digitalWrite(ylwLED, LOW);
   delay(500);
 
-   goToAngle(90);
+   //goToAngle(90);
 //  goToGoal(12,12);
 //  moveSquare(24);
 
@@ -142,6 +142,12 @@ void setup() {
 
 //the loop funciton runs continuously to move the robot wheels and count encoder ticks
 void loop() {
+
+  //moveSquare(24);
+  //delay(5000);
+  moveSquare(48);
+  //forward(48);
+  delay(5000);
   
   //move1(FWD, two_rot);            //move the robot wheels
   //print_data();                   //prints encoder data
@@ -209,7 +215,7 @@ void move1(int dir, int amt) {
 */
 void goToAngle(int angle) {
   
-  double ticksPerDegree = 5.75;
+  double ticksPerDegree = 5.65;
   int ticksToDrive = (int)(angle*ticksPerDegree);
 
   //digitalWrite(redLED, LOW);//turn off red LED
@@ -217,8 +223,12 @@ void goToAngle(int angle) {
   //digitalWrite(ylwLED, LOW);//turn off yellow LED
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
-  stepperRight.setSpeed(300);//set right motor speed
-  stepperLeft.setSpeed(300);//set left motor speed
+//  stepperRight.setSpeed(300);//set right motor speed
+//  stepperLeft.setSpeed(300);//set left motor speed
+  stepperRight.setSpeed(500);//set right motor speed
+  stepperLeft.setSpeed(500);//set left motor speed
+  stepperRight.setMaxSpeed(500);//set right motor speed
+  stepperLeft.setMaxSpeed(500);//set left motor speed
   stepperRight.moveTo(ticksToDrive);//set distance for right wheel to move
   stepperLeft.moveTo(-ticksToDrive);//set distance for left wheel to move
   stepperRight.runSpeedToPosition();//move right motor
@@ -289,8 +299,10 @@ void forward(int distance) {
   int ticksToDrive = distance*ticksPerInch;
   stepperRight.move(ticksToDrive);//move one full rotation forward relative to current position
   stepperLeft.move(ticksToDrive);//move one full rotation forward relative to current position
-  stepperRight.setSpeed(1000);//set right motor speed
-  stepperLeft.setSpeed(1000);//set left motor speed
+  stepperRight.setSpeed(510);//set right motor speed
+  stepperLeft.setSpeed(500);//set left motor speed
+  stepperRight.setMaxSpeed(510);//set right motor speed
+  stepperLeft.setMaxSpeed(500);//set left motor speed
   stepperRight.runSpeedToPosition();//move right motor
   stepperLeft.runSpeedToPosition();//move left motor
   runToStop();//run until the robot reaches the target
