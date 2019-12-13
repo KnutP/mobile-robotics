@@ -8,8 +8,9 @@
    Variables and functions have logical, intuitive names
    Functions are used to improve modularity, clarity, and readability
 ***********************************
-  RobotIntro.ino
-  Carlotta Berry 11.21.16
+  Arkin-Lab01.ino
+  Knut Peterson 12/13/19
+  Garrett Jacobs 12/13/19
 
   This program will introduce using the stepper motor library to create motion algorithms for the robot.
   The motions will be go to angle, go to goal, move in a circle, square, figure eight and teleoperation (stop, forward, spin, reverse, turn)
@@ -43,11 +44,6 @@
   digital pin 15 - green LED in series with 220 ohm resistor
   digital pin 16 - yellow LED in series with 220 ohm resistor
 
-
-  INSTALL THE LIBRARY
-  Sketch->Include Library->Manage Libraries...->AccelStepper->Include
-  OR
-  Sketch->Include Library->Add .ZIP Library...->AccelStepper-1.53.zip
 */
 
 #include <AccelStepper.h>//include the stepper motor library
@@ -124,56 +120,12 @@ void setup()
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, LOW);
   delay(500);
-  
-
 
 }
 
 void loop()
 {
-//
-//  forward(12);
-//  delay(5000);
-//  reverse(12);
-//  delay(5000);
-//  spin(90);
-//  delay(5000);
-//  spin(-90);
-//  delay(5000);
-//  pivot(90);
-//  delay(5000);
-//  pivot(-90);
-//  delay(5000);
-//
-//  double diam = 20;
-//  double robotWidth = 8.5; // inches
-//  double cWheel = 10.75; // inches
-//  double innerR = (diam/2) - (robotWidth/2);
-//  double outerR = (diam/2) + (robotWidth/2);
-//
-//  double angle = 90;
-//  double angleDifferential = 1.1;
-//  
-//  double arcOuter = angleDifferential*angle*(3.14159265358/180)*outerR; // solve for distance each wheel needs to travel
-//  double arcInner = angleDifferential*angle*(3.14159265358/180)*innerR;
-//  double innerPulses = arcInner*(1/cWheel)*(800); //solve for pulses each motor needs to go
-//  double outerPulses = arcOuter*(1/cWheel)*(800); //800 pulses per rotation
-//  int outerSpeed = 2000; // pulses per second (pick a speed to base the other one off of)
-//  int driveTime = outerPulses/outerSpeed; // seconds
-//  int innerSpeed = innerPulses/driveTime; // pulses per second
-//
-//  int tickDifferential = 280;
-//
-//  turn(innerSpeed, outerSpeed, innerPulses+tickDifferential, outerPulses);
-//  delay(5000);
-//  turn(outerSpeed, innerSpeed, outerPulses, innerPulses+tickDifferential);
-//  delay(5000);
 
-  //moveCircle(12, 1);
-  //delay(5000);
-
-//  moveFigure8(24, 1);
-//  delay(5000);
   moveFigure8(48, 1);
   delay(5000);
   
@@ -365,24 +317,22 @@ void runAtSpeed ( void ) {
 */
 void pivot(int angle) {
 
-  double ticksPerDegree = 11.32;
+  double ticksPerDegree = 11.32; // Measured the number of ticks in 90 degrees, then divided to find the constant
   int ticksToDrive = (int)(abs(angle)*ticksPerDegree);
+
+  digitalWrite(redLED, LOW);//turn off red LED
+  digitalWrite(grnLED, HIGH);//turn on green LED
+  digitalWrite(ylwLED, LOW);//turn off yellow LED
 
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
 
   if(angle > 0){
-    digitalWrite(redLED, LOW);//turn off red LED
-    digitalWrite(grnLED, HIGH);//turn on green LED
-    digitalWrite(ylwLED, LOW);//turn off yellow LED
     stepperRight.moveTo(ticksToDrive);//set distance to move
     stepperRight.setSpeed(1000);//set right motor speed
     stepperRight.runSpeedToPosition();//move right motor
     runToStop();//run until the robot reaches the target
   }else{    
-    digitalWrite(redLED, LOW);//turn off red LED
-    digitalWrite(grnLED, HIGH);//turn on green LED
-    digitalWrite(ylwLED, LOW);//turn off yellow LED
     stepperLeft.moveTo(ticksToDrive);//set distance to move
     stepperLeft.setSpeed(1000);//set left motor speed
     stepperLeft.runSpeedToPosition();//move left motor
@@ -393,7 +343,7 @@ void pivot(int angle) {
 
 /*
   The spin function takes in an angle in degrees (positive values are left, negative are right),
-  then spins the robot to that angle.
+  then spins the robot to that angle by running one motor forward and the other backward.
 */
 void spin(int angle) {
 
@@ -403,6 +353,7 @@ void spin(int angle) {
   digitalWrite(redLED, LOW);//turn off red LED
   digitalWrite(grnLED, HIGH);//turn on green LED
   digitalWrite(ylwLED, LOW);//turn off yellow LED
+  
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
   stepperRight.moveTo(ticksToDrive);//set distance for right wheel to move
@@ -416,7 +367,9 @@ void spin(int angle) {
 }
 
 /*
-  INSERT DESCRIPTION HERE, what are the inputs, what does it do, functions used
+  The turn function takes in speeds and distances(pulses) to drive for each motor,
+  then drives in a curve using the speed differential where the outer wheel drives at the faster speed
+  and the inner wheel drives at the slower speed, resulting in a turn.
 */
 void turn(double leftSpeed, double rightSpeed, int leftPulses, int rightPulses) {
     stepperLeft.setCurrentPosition(0);//set left wheel position to zero
@@ -481,47 +434,29 @@ void moveCircle(int diam, int dir) {
 
   digitalWrite(redLED, HIGH);
   digitalWrite(grnLED, LOW);
-  //digitalWrite(ylwLED, LOW);
   
   double robotWidth = 8.5; // inches
   double cWheel = 10.75; // inches
   double innerR = (diam/2) - (robotWidth/2);
   double outerR = (diam/2) + (robotWidth/2);
 
-  double angleDifferential = 1.16;
+  double angleDifferential = 1.16; // Constant to account for slippage and friction
   
   double arcOuter = angleDifferential*2*3.14159265358*outerR; // solve for distance each wheel needs to travel
   double arcInner = angleDifferential*2*3.14159265358*innerR;
   double innerPulses = arcInner*(1/cWheel)*(800); //solve for pulses each motor needs to go
   double outerPulses = arcOuter*(1/cWheel)*(800); //800 pulses per rotation
-  int outerSpeed = 2000; // pulses per second (pick a speed to base the other one off of)
+  
+  int outerSpeed = 2000; // pulses per second (pick a reference speed to base the other one off of)
   int driveTime = outerPulses/outerSpeed; // seconds
   int innerSpeed = innerPulses/driveTime; // pulses per second
 
-  int tickDifferential = 280;
+  int tickDifferential = 280; // This values evened out the ticks traveled by the inner and outer wheels
 
   if(dir == 1){
     turn(outerSpeed, innerSpeed, outerPulses, innerPulses+tickDifferential);
-//    stepperLeft.setCurrentPosition(0);//set left wheel position to zero
-//    stepperRight.setCurrentPosition(0);//set right wheel position to zero
-//    long positions[2];
-//    positions[0] = outerPulses;
-//    positions[1] = innerPulses+tickDifferential;
-//    stepperLeft.setSpeed(outerSpeed);
-//    stepperRight.setSpeed(innerSpeed);
-//    steppers.moveTo(positions);
-//    steppers.runSpeedToPosition();
   }else{
-        turn(innerSpeed, outerSpeed, innerPulses+tickDifferential, outerPulses);
-//    stepperLeft.setCurrentPosition(0);//set left wheel position to zero
-//    stepperRight.setCurrentPosition(0);//set right wheel position to zero
-//    long positions[2];
-//    positions[0] = innerPulses+tickDifferential;
-//    positions[1] = outerPulses;
-//    stepperLeft.setSpeed(innerSpeed);
-//    stepperRight.setSpeed(outerSpeed);
-//    steppers.moveTo(positions);
-//    steppers.runSpeedToPosition();
+    turn(innerSpeed, outerSpeed, innerPulses+tickDifferential, outerPulses);
   }
 }
 
@@ -534,7 +469,7 @@ void moveFigure8(int diam, int dir){
   digitalWrite(grnLED, LOW);
   digitalWrite(ylwLED, HIGH);
 
-  moveCircle(diam, dir);
+  moveCircle(diam, dir); // circle to the left
   delay(250);
-  moveCircle(diam, -dir);
+  moveCircle(diam, -dir); // circle to the right
 }

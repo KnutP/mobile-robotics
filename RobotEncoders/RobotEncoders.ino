@@ -143,22 +143,18 @@ void setup() {
 //the loop funciton runs continuously to move the robot wheels and count encoder ticks
 void loop() {
 
-
-//  goToAngle(45);
+//
+//  goToAngle(60);
 //  delay(5000);
 //  goToAngle(-135);
+//
+//  goToGoal(24, 24);
+//  delay(5000);
+//  goToGoal(24, -36);
 
-  goToGoal(12, 24);
-  delay(5000);
-  goToGoal(-36, -24);
+//  forward(48);
 
-  
-
-  //moveSquare(24);
-  //delay(5000);
-  //moveSquare(48);
-  //forward(48);
-  //goToAngle(90);
+  moveSquare(48);
   delay(5000);
   
   //move1(FWD, two_rot);            //move the robot wheels
