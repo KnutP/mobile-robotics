@@ -1,20 +1,11 @@
 /*
-  NOTE:
-   THIS IS THE STANDARD FOR HOW TO PROPERLY COMMENT CODE
-   Header comment has program, name, author name, date created
-   Header comment has brief description of what program does
-   Header comment has list of key functions and variables created with decription
-   There are sufficient in line and block comments in the body of the program
-   Variables and functions have logical, intuitive names
-   Functions are used to improve modularity, clarity, and readability
 ***********************************
   Arkin-Lab01.ino
   Knut Peterson 12/13/19
   Garrett Jacobs 12/13/19
 
-  This program will introduce using the stepper motor library to create motion algorithms for the robot.
+  This program will introduce the basic movement functions of the robot Arkin.
   The motions will be go to angle, go to goal, move in a circle, square, figure eight and teleoperation (stop, forward, spin, reverse, turn)
-  It will also include wireless commmunication for remote control of the robot by using a game controller or serial monitor.
   The primary functions created are
   moveCircle - given the diameter in inches and direction of clockwise or counterclockwise, move the robot in a circle with that diameter
   moveFigure8 - given the diameter in inches, use the moveCircle() function with direction input to create a Figure 8
@@ -23,26 +14,9 @@
   spin - both wheels move with same velocity opposite direction
   turn - both wheels move with same direction different velocity
   stop -both wheels stationary
-
-  Interrupts
-  https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
-  https://www.arduino.cc/en/Tutorial/CurieTimer1Interrupt
-  https://playground.arduino.cc/code/timer1
-  https://playground.arduino.cc/Main/TimerPWMCheatsheet
-  http://arduinoinfo.mywikis.net/wiki/HOME
-
-  Hardware Connections:
-  pin mappings: https://www.arduino.cc/en/Hacking/PinMapping2560
-  digital pin 13 - enable LED on microcontroller
-  digital pin 48 - enable PIN on A4988 Stepper Motor Driver StepSTICK
-  digital pin 50 - right stepper motor step pin
-  digital pin 51 - right stepper motor direction pin
-  digital pin 52 - left stepper motor step pin
-  digital pin 53 - left stepper motor direction pin
-
-  digital pin 14 - red LED in series with 220 ohm resistor
-  digital pin 15 - green LED in series with 220 ohm resistor
-  digital pin 16 - yellow LED in series with 220 ohm resistor
+  goToAngle - given an angle in degrees use odomery to turn the robot
+  goToGoal - given an x and y position in feet, use the goToAngle() function and trigonometry to move to a goal positoin
+  moveSquare - given the side length in feet, move the robot in a square with the given side length
 
 */
 
@@ -128,152 +102,7 @@ void loop()
 
   moveFigure8(48, 1);
   delay(5000);
-  
-  //uncomment each function one at a time to see what the code does
-  //move1();//call move back and forth function
-  //move2();//call move back and forth function with AccelStepper library functions
-  //move3();//call move back and forth function with MultiStepper library functions
-  //move4(); //move to target position with 2 different speeds
-  //move5(); //move continuously with 2 different speeds
 
-}
-
-/*
-   The move1() function will move the robot forward one full rotation and backwared on
-   full rotation.  Recall that that there 200 steps in one full rotation or 1.8 degrees per
-   step. This function uses setting the step pins high and low with delays to move. The speed is set by
-   the length of the delay.
-*/
-void move1() {
-  digitalWrite(redLED, HIGH);//turn on red LED
-  digitalWrite(grnLED, LOW);//turn off green LED
-  digitalWrite(ylwLED, LOW);//turn off yellow LED
-  digitalWrite(ltDirPin, HIGH); // Enables the motor to move in a particular direction
-  digitalWrite(rtDirPin, HIGH); // Enables the motor to move in a particular direction
-  // Makes 800 pulses for making one full cycle rotation
-  for (int x = 0; x < 800; x++) {
-    digitalWrite(rtStepPin, HIGH);
-    digitalWrite(ltStepPin, HIGH);
-    delayMicroseconds(stepTime);
-    digitalWrite(rtStepPin, LOW);
-    digitalWrite(ltStepPin, LOW);
-    delayMicroseconds(stepTime);
-  }
-  delay(1000); // One second delay
-  digitalWrite(ltDirPin, LOW); // Enables the motor to move in opposite direction
-  digitalWrite(rtDirPin, LOW); // Enables the motor to move in opposite direction
-  // Makes 800 pulses for making one full cycle rotation
-  for (int x = 0; x < 800; x++) {
-    digitalWrite(rtStepPin, HIGH);
-    digitalWrite(ltStepPin, HIGH);
-    delayMicroseconds(stepTime);
-    digitalWrite(rtStepPin, LOW);
-    digitalWrite(ltStepPin, LOW);
-    delayMicroseconds(stepTime);
-  }
-  delay(1000); // One second delay
-}
-
-/*
-   The move2() function will use AccelStepper library functions to move the robot
-   move() is a library function for relative movement to set a target position
-   moveTo() is a library function for absolute movement to set a target position
-   stop() is a library function that causes the stepper to stop as quickly as possible
-   run() is a library function that uses accel and decel to achieve target position, no blocking
-   runSpeed() is a library function that uses constant speed to achieve target position, no blocking
-   runToPosition() is a library function that uses blocking with accel/decel to achieve target position
-   runSpeedToPosition() is a library function that uses constant speed to achieve target posiiton, no blocking
-   runToNewPosition() is a library function that uses blocking with accel/decel to achieve target posiiton
-*/
-void move2() {
-  digitalWrite(redLED, LOW);//turn off red LED
-  digitalWrite(grnLED, HIGH);//turn on green LED
-  digitalWrite(ylwLED, LOW);//turn off yellow LED
-  stepperRight.moveTo(800);//move one full rotation forward relative to current position
-  stepperLeft.moveTo(800);//move one full rotation forward relative to current position
-  stepperRight.setSpeed(1000);//set right motor speed
-  stepperLeft.setSpeed(1000);//set left motor speed
-  stepperRight.runSpeedToPosition();//move right motor
-  stepperLeft.runSpeedToPosition();//move left motor
-  runToStop();//run until the robot reaches the target
-  delay(1000); // One second delay
-  stepperRight.moveTo(0);//move one full rotation backward relative to current position
-  stepperLeft.moveTo(0);//move one full rotation backward relative to current position
-  stepperRight.setSpeed(1000);//set right motor speed
-  stepperLeft.setSpeed(1000);//set left motor speed
-  stepperRight.runSpeedToPosition();//move right motor
-  stepperLeft.runSpeedToPosition();//move left motor
-  runToStop();//run until the robot reaches the target
-  delay(1000); // One second delay
-}
-
-/*
-   The move3() function will use the MultiStepper() class to move both motors at once
-   move() is a library function for relative movement to set a target position
-   moveTo() is a library function for absolute movement to set a target position
-   stop() is a library function that causes the stepper to stop as quickly as possible
-   run() is a library function that uses accel and decel to achieve target position, no blocking
-   runSpeed() is a library function that uses constant speed to achieve target position, no blocking
-   runToPosition() is a library function that uses blocking with accel/decel to achieve target position
-   runSpeedToPosition() is a library function that uses constant speed to achieve target posiiton, no blocking
-   runToNewPosition() is a library function that uses blocking with accel/decel to achieve target posiiton
-*/
-void move3() {
-  digitalWrite(redLED, LOW);//turn off red LED
-  digitalWrite(grnLED, LOW);//turn off green LED
-  digitalWrite(ylwLED, HIGH);//turn on yellow LED
-  long positions[2]; // Array of desired stepper positions
-  positions[0] = 800;//right motor absolute position
-  positions[1] = 800;//left motor absolute position
-  steppers.moveTo(positions);
-  steppers.runSpeedToPosition(); // Blocks until all are in position
-  delay(1000);//wait one second
-  // Move to a different coordinate
-  positions[0] = 0;//right motor absolute position
-  positions[1] = 0;//left motor absolute position
-  steppers.moveTo(positions);
-  steppers.runSpeedToPosition(); // Blocks until all are in position
-  delay(1000);//wait one second
-}
-
-/*this function will move to target at 2 different speeds*/
-void move4() {
-
-  long positions[2]; // Array of desired stepper positions
-  int leftPos = 5000;//right motor absolute position
-  int rightPos = 1000;//left motor absolute position
-  int leftSpd = 5000;//right motor speed
-  int rightSpd = 1000; //left motor speed
-
-  digitalWrite(redLED, HIGH);//turn on red LED
-  digitalWrite(grnLED, HIGH);//turn on green LED
-  digitalWrite(ylwLED, LOW);//turn off yellow LED
-
-  //Uncomment the next 4 lines for absolute movement
-  stepperLeft.setCurrentPosition(0);//set left wheel position to zero
-  stepperRight.setCurrentPosition(0);//set right wheel position to zero
-  stepperLeft.moveTo(leftPos);//move left wheel to absolute position
-  stepperRight.moveTo(rightPos);//move right wheel to absolute position
-
-  //Unomment the next 2 lines for relative movement
-  //stepperLeft.move(leftPos);//move left wheel to relative position
-  //stepperRight.move(rightPos);//move right wheel to relative position
-
-  stepperLeft.setMaxSpeed(leftSpd);//set left motor speed
-  stepperRight.setMaxSpeed(rightSpd);//set right motor speed
-  runAtSpeedToPosition();//run at speed to target position
-}
-
-/*This function will move continuously at 2 different speeds*/
-void move5() {
-  digitalWrite(redLED, LOW);//turn off red LED
-  digitalWrite(grnLED, HIGH);//turn on green LED
-  digitalWrite(ylwLED, HIGH);//turn on yellow LED
-  int leftSpd = 5000;//right motor speed
-  int rightSpd = 1000; //left motor speed
-  stepperLeft.setSpeed(leftSpd);//set left motor speed
-  stepperRight.setSpeed(rightSpd);//set right motor speed
-  runAtSpeed();
 }
 
 /*This function, runToStop(), will run the robot until the target is achieved and
@@ -423,17 +252,14 @@ void stop() {
   stepperLeft.stop();//stop left motor
 }
 
-
-
-
 /*
   The moveCircle function takes in a diameter in inches and a direction integer (1 for left, -1 for right).
   The robot will then drive in a circle of the given diameter in the given direction.
 */
 void moveCircle(int diam, int dir) {
 
-  digitalWrite(redLED, HIGH);
-  digitalWrite(grnLED, LOW);
+  digitalWrite(redLED, HIGH); //turn on red LED
+  digitalWrite(grnLED, LOW); //turn off green LED
   
   double robotWidth = 8.5; // inches
   double cWheel = 10.75; // inches
@@ -465,11 +291,68 @@ void moveCircle(int diam, int dir) {
   twice with 2 different direcitons to create a figure 8 with circles of the given diameter.
 */
 void moveFigure8(int diam, int dir){
-  digitalWrite(redLED, HIGH);
-  digitalWrite(grnLED, LOW);
-  digitalWrite(ylwLED, HIGH);
+  digitalWrite(redLED, HIGH); // turn on red LED
+  digitalWrite(grnLED, LOW); // turn off green LED
+  digitalWrite(ylwLED, HIGH); // turn on yellow LED
 
   moveCircle(diam, dir); // circle to the left
   delay(250);
   moveCircle(diam, -dir); // circle to the right
+}
+
+/*
+  The goToAngle function takes in an angle in degrees (positive values are left, negative are right),
+  then spins the robot to that angle.
+*/
+void goToAngle(int angle) {
+  
+  double ticksPerDegree = 5.62;
+  int ticksToDrive = (int)(angle*ticksPerDegree);
+
+  digitalWrite(grnLED, HIGH);//turn on green LED
+
+  stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+  stepperRight.setCurrentPosition(0);//set right wheel position to zero
+
+  stepperRight.setMaxSpeed(500);//set right motor speed
+  stepperLeft.setMaxSpeed(500);//set left motor speed
+  stepperRight.moveTo(ticksToDrive);//set distance for right wheel to move
+  stepperLeft.moveTo(-ticksToDrive);//set distance for left wheel to move
+  stepperRight.runSpeedToPosition();//move right motor
+  stepperLeft.runSpeedToPosition();//move left motor
+  runToStop();//run until the robot reaches the target
+  
+}
+
+/*
+  The goToGoal function takes in coordinates x and y in inches,
+  the drives to that location by first turning to the correct angle
+  and then driving forward.
+*/
+void goToGoal(int x, int y) {
+  digitalWrite(redLED, LOW);//turn off red LED
+  digitalWrite(grnLED, LOW);//turn off green LED
+  digitalWrite(ylwLED, HIGH);//turn on yellow LED
+  
+  double thetaD = atan2(y,x); // calculates angle from desired coordinates
+  goToAngle(thetaD*180/3.14159265358); // turns to the angle
+  
+  int distance = sqrt((x*x)+(y*y)); // calculate distance from desired coordinates
+  forward(distance); // drives distance
+ 
+}
+
+/*
+  The moveSquare function takes in a side length in inches,
+  then drives the robot in a square with sides of that length.
+*/
+void moveSquare(int side) {
+  digitalWrite(redLED, HIGH);//turn on red LED
+  digitalWrite(ylwLED, HIGH);//turn on yellow LED
+
+  // iterates through all 4 sides of the square
+  for(int i = 0; i<4; i++){
+    forward(side);
+    goToAngle(90);
+  }
 }
