@@ -1,22 +1,15 @@
 /*
 ***********************************
-  Arkin-Lab01.ino
+  Arkin_Lab02.ino
   Knut Peterson 12/13/19
   Garrett Jacobs 12/13/19
 
-  This program will introduce the basic movement functions of the robot Arkin.
-  The motions will be go to angle, go to goal, move in a circle, square, figure eight and teleoperation (stop, forward, spin, reverse, turn)
-  The primary functions created are
-  moveCircle - given the diameter in inches and direction of clockwise or counterclockwise, move the robot in a circle with that diameter
-  moveFigure8 - given the diameter in inches, use the moveCircle() function with direction input to create a Figure 8
-  forward, reverse - both wheels move with same velocity, same direction
-  pivot- one wheel stationary, one wheel moves forward or back
-  spin - both wheels move with same velocity opposite direction
-  turn - both wheels move with same direction different velocity
-  stop -both wheels stationary
-  goToAngle - given an angle in degrees use odomery to turn the robot
-  goToGoal - given an x and y position in feet, use the goToAngle() function and trigonometry to move to a goal positoin
-  moveSquare - given the side length in feet, move the robot in a square with the given side length
+  This program will introduce subsumption architecture for the robot Arkin.
+  The layers are randomWander, shyKid, aggressiveKid, smartWander, and goalHoming.
+  randomWander - the robot moves around randomly.
+  shyKid - the robot remains in place until an obstacle enters its line of sight, then it moves away.
+  smartWander - the robot moves around randomly and avoids objects.
+  goalHoming - the robot moves to specified coordinates while avoiding obstacles along the way.
 
 */
 
@@ -101,13 +94,8 @@ void setup()
 
 void loop()
 {
-  //forward(12);
-//  shyKid();
-//  randomWander();
-//  aggressiveKid();
+
 //  smartWander();
-
-
   goalHoming(35, 22);
   delay(10000);
 }
@@ -131,10 +119,13 @@ void randomWander(){
 }
 
 void smartWander(){
+  // while the robot sees something, run the shyKid behavior
   while(irRead(0) < 15 || irRead(1) < 15 || irRead(2) < 15 || irRead(3) < 15){
     digitalWrite(redLED, LOW);
     digitalWrite(grnLED, LOW);
     digitalWrite(ylwLED, HIGH);
+
+    // read the 4 ir sensors
     double fDist = irRead(0);
     double bDist = irRead(1);
     double lDist = irRead(3);
@@ -143,35 +134,47 @@ void smartWander(){
     double leftSpeed = 0;
     double rightSpeed = 0;
 
+    // if objects on both front and back, spin 90 degrees and move away
     if(fDist < 12 && bDist < 12 && lDist > 12 && rDist > 12){
       spin(90);
       forward(12);
-    } else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
+    }
+    
+    // if no objects within 12 inches, do nothing
+    else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
       double leftSpeed = 0;
       double rightSpeed = 0;
-    }else if(fDist<12){
+    }
+    
+    // if an object is in front, subtract the side force vectors
+    else if(fDist < 12){
       leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
       rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
-    } else if(bDist<12){
+    } 
+    
+    // if an object is behind, add the side force vectors
+    else if(bDist<12){
       leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
       rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
-    }else{
+    }
+    
+    // default to subtracting the side force vectos
+    else{
       leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
       rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
     }
    
-
     stepperRight.setSpeed(rightSpeed);//set right motor speed
     stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
     double beginMillis = millis();
     while(millis()<beginMillis + 50){
       stepperRight.runSpeed();//move right motor
-      stepperLeft.runSpeed();//move left motor
-      
+      stepperLeft.runSpeed();//move left motor 
     }
-
-  }if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
+  }
+  
+  if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
     digitalWrite(redLED, LOW);
     digitalWrite(grnLED, LOW);
     digitalWrite(ylwLED, HIGH);
@@ -200,7 +203,6 @@ void goalHoming(double goalX, double goalY){
   double currentAngle = 0;
 
   boolean atGoal = false;
-
 
   // while not at goal, run the goal homing
   while( !atGoal ){
@@ -274,6 +276,9 @@ void goalHoming(double goalX, double goalY){
   }
 }
 
+/* reduceAngle is a helper function that takes in an angle in radians
+ *  and if it is larger than a full circle, it divides by 2*pi and returns the value.
+ */
 double reduceAngle(double angle){
   if(angle > 2*3.14159265358){
     return angle/(2*3.14159265358);
@@ -282,6 +287,9 @@ double reduceAngle(double angle){
   }
 }
 
+/* irRead is a helper function that reads the irSensor value at the given pin,
+ *  converts the distance to inches, and returns the value.
+ */
 double irRead(int pin){
   int value = 0;
   for (int i=0; i <30; i++){
@@ -295,39 +303,37 @@ double irRead(int pin){
 
   if(pin == 0){
     return value_front;
-  }
-  else if(pin == 1){
+  } else if(pin == 1){
     return value_back;
-  }
-  else if(pin == 3){
+  } else if(pin == 3){
     return value_left;
-  }
-  else if(pin == 2){
+  } else if(pin == 2){
     return value_right;
-  }
-  else{
+  } else{
     return 0;
   }
 
 }
 
 void aggressiveKid(){
-
   digitalWrite(redLED, LOW);
   digitalWrite(grnLED, LOW);
   digitalWrite(ylwLED, LOW);
 
-  if(irRead(1)<4){
+  // if the front ir sensor sees something, stop
+  if(irRead(0)<4){
     
     digitalWrite(redLED, HIGH);
     digitalWrite(grnLED, LOW);
     digitalWrite(ylwLED, LOW);
     stop();
-  }else{
+  }
+  // otherwise, drive forward
+  else{
     stepperRight.run();//move one full rotation forward relative to current position
     stepperLeft.run();//move one full rotation forward relative to current position
-    stepperRight.setSpeed(-1000);//set right motor speed
-    stepperLeft.setSpeed(-1000);//set left motor speed
+    stepperRight.setSpeed(1000);//set right motor speed
+    stepperLeft.setSpeed(1000);//set left motor speed
     stepperRight.runSpeed();//move right motor
     stepperLeft.runSpeed();//move left motor
   }
@@ -335,6 +341,7 @@ void aggressiveKid(){
 }
 
 void shyKid(){
+  // if no objects within 15 inches, do nothing
   if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
     stop();
     digitalWrite(redLED, LOW);
@@ -344,6 +351,8 @@ void shyKid(){
     digitalWrite(redLED, LOW);
     digitalWrite(grnLED, LOW);
     digitalWrite(ylwLED, HIGH);
+
+    // read the 4 ir sensors
     double fDist = irRead(0);
     double bDist = irRead(1);
     double lDist = irRead(3);
@@ -352,58 +361,46 @@ void shyKid(){
     double leftSpeed = 0;
     double rightSpeed = 0;
 
+    // if objects on both front and back, spin 90 degrees and move away
     if(fDist < 12 && bDist < 12 && lDist > 12 && rDist > 12){
       spin(90);
       forward(12);
-    } else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
+    }
+    
+    // if no objects within 12 inches, do nothing
+    else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
       double leftSpeed = 0;
       double rightSpeed = 0;
-    }else if(fDist<12){
+    }
+    
+    // if an object is in front, subtract the side force vectors
+    else if(fDist < 12){
       leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
       rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
-    } else if(bDist<12){
+    } 
+    
+    // if an object is behind, add the side force vectors
+    else if(bDist<12){
       leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
       rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
-    }else{
+    }
+    
+    // default to subtracting the side force vectos
+    else{
       leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
       rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
     }
    
-
     stepperRight.setSpeed(rightSpeed);//set right motor speed
     stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
     double beginMillis = millis();
     while(millis()<beginMillis + 50){
       stepperRight.runSpeed();//move right motor
-      stepperLeft.runSpeed();//move left motor
-      
+      stepperLeft.runSpeed();//move left motor 
     }
   }
-  
 }
-
-void betterShyKid(){
-  if(irRead(0) > 12 && irRead(1) > 12 && irRead(2) > 12 && irRead(3) > 12){
-    stop();
-  }else{
-    double fDist = irRead(0);
-    double bDist = irRead(1);
-    double lDist = irRead(3);
-    double rDist = irRead(2);
-
-    double leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
-    double rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
-
-
-    stepperRight.setSpeed(rightSpeed);//set right motor speed
-    stepperLeft.setSpeed(leftSpeed);//set left motor speed
-    stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor
-      
-  }
-}
-
 
 /*This function, runToStop(), will run the robot until the target is achieved and
    then stop it
