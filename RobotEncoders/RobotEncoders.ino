@@ -10,6 +10,8 @@
 ***********************************
   /*RobotEncoders.ino
    C.A. Berry, 11/20/17
+   Knut Peterson, 12/13/19
+   Garrett Jacobs, 12/13/19
    This program will demonstrate how the retrofit encoders for the CEENBot with the Arduino Mega. The encoders will use an interrupt
    to count the steps moved in order to provide feedback control to correct for odometry error. An interrupt will be used to read the encoder ticks and
    printed to the serial monitor. Try to determine how many ticks for one rotatoin of the wheel.
@@ -23,10 +25,10 @@
   Hardware Connection:
   digital pin 13 - enable LED on microcontroller
   digital pin 48 - enable PIN on A4988 Stepper Motor Driver StepSTICK
-  digital pin 50 - left stepper motor step pin
-  digital pin 51 - left stepper motor direction pin
-  digital pin 52 - right stepper motor step pin
-  digital pin 53 - right stepper motor direction pin
+  digital pin 52 - left stepper motor step pin
+  digital pin 53 - left stepper motor direction pin
+  digital pin 50 - right stepper motor step pin
+  digital pin 51 - right stepper motor direction pin
   digital pin 2 - left wheel encoder
   digital pin 3 - right wheel encoder
 
@@ -118,7 +120,7 @@ void setup() {
   delay(wait_time);                   //wait before moving the robot
 
 
-  delay(3000);//wait 5 seconds
+  delay(3000);//wait 3 seconds
   // Light up red, yellow, green, then start program
   delay(500);
   digitalWrite(redLED, HIGH);
@@ -134,32 +136,14 @@ void setup() {
   digitalWrite(ylwLED, LOW);
   delay(500);
 
-   //goToAngle(90);
-//  goToGoal(12,12);
-//  moveSquare(24);
-
 }
 
 //the loop funciton runs continuously to move the robot wheels and count encoder ticks
 void loop() {
 
-//
-//  goToAngle(60);
-//  delay(5000);
-//  goToAngle(-135);
-//
-//  goToGoal(24, 24);
-//  delay(5000);
-//  goToGoal(24, -36);
-
-//  forward(48);
-
   moveSquare(48);
   delay(5000);
   
-  //move1(FWD, two_rot);            //move the robot wheels
-  //print_data();                   //prints encoder data
-  //delay(wait_time);               //wait to move robot
 }
 
 //function prints encoder data to serial monitor
@@ -226,13 +210,11 @@ void goToAngle(int angle) {
   double ticksPerDegree = 5.62;
   int ticksToDrive = (int)(angle*ticksPerDegree);
 
-  //digitalWrite(redLED, LOW);//turn off red LED
   digitalWrite(grnLED, HIGH);//turn on green LED
-  //digitalWrite(ylwLED, LOW);//turn off yellow LED
+
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
-//  stepperRight.setSpeed(500);//set right motor speed
-//  stepperLeft.setSpeed(500);//set left motor speed
+
   stepperRight.setMaxSpeed(500);//set right motor speed
   stepperLeft.setMaxSpeed(500);//set left motor speed
   stepperRight.moveTo(ticksToDrive);//set distance for right wheel to move
@@ -252,10 +234,12 @@ void goToGoal(int x, int y) {
   digitalWrite(redLED, LOW);//turn on red LED
   digitalWrite(grnLED, LOW);//turn off green LED
   digitalWrite(ylwLED, HIGH);//turn off yellow LED
-  double thetaD = atan2(y,x);
-  goToAngle(thetaD*180/3.14159265358);
-  int distance = sqrt((x*x)+(y*y));
-  forward(distance);
+  
+  double thetaD = atan2(y,x); // calculates angle from desired coordinates
+  goToAngle(thetaD*180/3.14159265358); // turns to the angle
+  
+  int distance = sqrt((x*x)+(y*y)); // calculate distance from desired coordinates
+  forward(distance); // drives distance
  
 }
 
@@ -265,8 +249,9 @@ void goToGoal(int x, int y) {
 */
 void moveSquare(int side) {
   digitalWrite(redLED, HIGH);//turn on red LED
- // digitalWrite(grnLED, LOW);//turn off green LED
   digitalWrite(ylwLED, HIGH);//turn off yellow LED
+
+  // iterates through all 4 sides of the square
   for(int i = 0; i<4; i++){
     forward(side);
     goToAngle(90);
@@ -305,12 +290,9 @@ void forward(int distance) {
   int ticksToDrive = distance*ticksPerInch;
   stepperRight.move(ticksToDrive);//move one full rotation forward relative to current position
   stepperLeft.move(ticksToDrive);//move one full rotation forward relative to current position
-//  stepperRight.setSpeed(1000);//set right motor speed
-//  stepperLeft.setSpeed(1000);//set left motor speed
   stepperRight.setMaxSpeed(1000);//set right motor speed
   stepperLeft.setMaxSpeed(1000);//set left motor speed
   stepperRight.runSpeedToPosition();//move right motor
   stepperLeft.runSpeedToPosition();//move left motor
   runToStop();//run until the robot reaches the target
-  
 }

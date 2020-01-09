@@ -67,9 +67,9 @@ void setup()
   digitalWrite(grnLED, LOW);//turn off green LED
 
 
-  stepperRight.setMaxSpeed(1500);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
+  stepperRight.setMaxSpeed(2500);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
   stepperRight.setAcceleration(10000);//set desired acceleration in steps/s^2
-  stepperLeft.setMaxSpeed(1500);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
+  stepperLeft.setMaxSpeed(2500);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
   stepperLeft.setAcceleration(10000);//set desired acceleration in steps/s^2
   steppers.addStepper(stepperRight);//add right motor to MultiStepper
   steppers.addStepper(stepperLeft);//add left motor to MultiStepper
@@ -94,12 +94,314 @@ void setup()
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, LOW);
   delay(500);
+  
+  Serial.begin(9600);
 
 }
 
 void loop()
 {
+  //forward(12);
+//  shyKid();
+//  randomWander();
+//  aggressiveKid();
+//  smartWander();
 
+
+  goalHoming(35, 22);
+  delay(10000);
+}
+
+void randomWander(){
+
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, LOW);
+
+  if (random(0,10) > 5){
+        // Random change to speed, position and acceleration
+        // Make sure we dont get 0 speed or accelerations
+        delay(500);
+        forward(random(5,13));
+    }
+    else {
+      delay(500);
+      pivot(random(-180, 180));
+    }
+}
+
+void smartWander(){
+  while(irRead(0) < 15 || irRead(1) < 15 || irRead(2) < 15 || irRead(3) < 15){
+    digitalWrite(redLED, LOW);
+    digitalWrite(grnLED, LOW);
+    digitalWrite(ylwLED, HIGH);
+    double fDist = irRead(0);
+    double bDist = irRead(1);
+    double lDist = irRead(3);
+    double rDist = irRead(2);
+
+    double leftSpeed = 0;
+    double rightSpeed = 0;
+
+    if(fDist < 12 && bDist < 12 && lDist > 12 && rDist > 12){
+      spin(90);
+      forward(12);
+    } else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
+      double leftSpeed = 0;
+      double rightSpeed = 0;
+    }else if(fDist<12){
+      leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
+      rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
+    } else if(bDist<12){
+      leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
+      rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
+    }else{
+      leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
+      rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
+    }
+   
+
+    stepperRight.setSpeed(rightSpeed);//set right motor speed
+    stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+    double beginMillis = millis();
+    while(millis()<beginMillis + 50){
+      stepperRight.runSpeed();//move right motor
+      stepperLeft.runSpeed();//move left motor
+      
+    }
+
+  }if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
+    digitalWrite(redLED, LOW);
+    digitalWrite(grnLED, LOW);
+    digitalWrite(ylwLED, HIGH);
+    double fDist = irRead(0);
+    double bDist = irRead(1);
+    double lDist = irRead(3);
+    double rDist = irRead(2);
+    Serial.print('yay');
+
+    if (random(0,10) > 5){
+          // Random change to speed, position and acceleration
+          // Make sure we dont get 0 speed or accelerations
+          delay(500);
+          forward(random(-6,6));
+      }
+      else {
+        delay(500);
+        pivot(random(-90, 90));
+      }
+  }
+}
+
+void goalHoming(double goalX, double goalY){
+  double currentX = 0;
+  double currentY = 0;
+  double currentAngle = 0;
+
+  boolean atGoal = false;
+
+
+  // while not at goal, run the goal homing
+  while( !atGoal ){
+    atGoal = ( (goalX+1) > currentX && currentX > (goalX-1) ) && ( (goalY+1) > currentY && currentY > (goalY-1) );
+    
+    double deltaX = goalX-currentX;
+    double deltaY = goalY-currentY;
+    double goalAngle = atan2(deltaY, deltaX); // calculates angle from desired coordinates
+    
+    Serial.print("currentX: ");
+    Serial.println(currentX);
+    Serial.print("currentY: ");
+    Serial.println(currentY);
+    Serial.print("Currentangle: ");
+    Serial.println(currentAngle);
+    Serial.print("atGoal: ");
+    Serial.println(atGoal);
+    
+    double deltaAngle = goalAngle - currentAngle;
+    goToAngle(deltaAngle*180/3.14159265358); // turns to the angle
+    currentAngle += deltaAngle;
+    currentAngle = reduceAngle(currentAngle);
+    delay(1000);
+
+    // while no obstacle, go to goal as usual
+    int count = 0;
+    while(irRead(0) > 9 && irRead(2) > 9 && irRead(3) > 9 && !atGoal && count < 10 ){
+      deltaX = goalX-currentX;
+      deltaY = goalY-currentY;
+    
+      forward(1); // drives forward 1 inch
+      double distanceError = 0.0531;
+      currentX = currentX + cos(currentAngle) - distanceError;
+      currentY = currentY + sin(currentAngle) - distanceError;
+
+      atGoal = ( (goalX+1) > currentX && currentX > (goalX-1) ) && ( (goalY+1) > currentY && currentY > (goalY-1) );
+      Serial.print("currentX: ");
+      Serial.println(currentX);
+      Serial.print("currentY: ");
+      Serial.println(currentY);
+      Serial.print("Currentangle: ");
+      Serial.println(currentAngle);
+      Serial.print("atGoal: ");
+      Serial.println(atGoal);
+      count++;
+
+    }
+
+    // turn away from obstacle
+    if(irRead(0) < 9){
+      goToAngle(-90);
+      currentAngle += -3.14159265358/2;
+      currentAngle = reduceAngle(currentAngle);
+    }
+    while((irRead(2) < 15 || irRead(3) < 15) && !atGoal){
+      forward(1);
+      double distanceError = 0.0531;
+      currentX = currentX + cos(currentAngle) - distanceError;
+      currentY = currentY + sin(currentAngle) - distanceError;
+
+      atGoal = ( (goalX+1) > currentX && currentX > (goalX-1) ) && ( (goalY+1) > currentY && currentY > (goalY-1) );
+      Serial.print("currentX: ");
+      Serial.println(currentX);
+      Serial.print("currentY: ");
+      Serial.println(currentY);
+      Serial.print("Currentangle: ");
+      Serial.println(currentAngle);
+      Serial.print("atGoal: ");
+      Serial.println(atGoal);
+    }
+  }
+}
+
+double reduceAngle(double angle){
+  if(angle > 2*3.14159265358){
+    return angle/(2*3.14159265358);
+  } else {
+    return angle;
+  }
+}
+
+double irRead(int pin){
+  int value = 0;
+  for (int i=0; i <30; i++){
+    value = value + analogRead(pin);
+  }
+  value = value/30;
+  double value_front = 8452.3*pow(value,-1.235);
+  double value_left = 9992.4*pow(value, -1.29);
+  double value_right = 10910*pow(value, -1.311);
+  double value_back = 8916.1*pow(value, -1.274);
+
+  if(pin == 0){
+    return value_front;
+  }
+  else if(pin == 1){
+    return value_back;
+  }
+  else if(pin == 3){
+    return value_left;
+  }
+  else if(pin == 2){
+    return value_right;
+  }
+  else{
+    return 0;
+  }
+
+}
+
+void aggressiveKid(){
+
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, LOW);
+
+  if(irRead(1)<4){
+    
+    digitalWrite(redLED, HIGH);
+    digitalWrite(grnLED, LOW);
+    digitalWrite(ylwLED, LOW);
+    stop();
+  }else{
+    stepperRight.run();//move one full rotation forward relative to current position
+    stepperLeft.run();//move one full rotation forward relative to current position
+    stepperRight.setSpeed(-1000);//set right motor speed
+    stepperLeft.setSpeed(-1000);//set left motor speed
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor
+  }
+  
+}
+
+void shyKid(){
+  if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
+    stop();
+    digitalWrite(redLED, LOW);
+    digitalWrite(grnLED, LOW);
+    digitalWrite(ylwLED, LOW);
+  }else{
+    digitalWrite(redLED, LOW);
+    digitalWrite(grnLED, LOW);
+    digitalWrite(ylwLED, HIGH);
+    double fDist = irRead(0);
+    double bDist = irRead(1);
+    double lDist = irRead(3);
+    double rDist = irRead(2);
+
+    double leftSpeed = 0;
+    double rightSpeed = 0;
+
+    if(fDist < 12 && bDist < 12 && lDist > 12 && rDist > 12){
+      spin(90);
+      forward(12);
+    } else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
+      double leftSpeed = 0;
+      double rightSpeed = 0;
+    }else if(fDist<12){
+      leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
+      rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
+    } else if(bDist<12){
+      leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
+      rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
+    }else{
+      leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
+      rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
+    }
+   
+
+    stepperRight.setSpeed(rightSpeed);//set right motor speed
+    stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+    double beginMillis = millis();
+    while(millis()<beginMillis + 50){
+      stepperRight.runSpeed();//move right motor
+      stepperLeft.runSpeed();//move left motor
+      
+    }
+  }
+  
+}
+
+void betterShyKid(){
+  if(irRead(0) > 12 && irRead(1) > 12 && irRead(2) > 12 && irRead(3) > 12){
+    stop();
+  }else{
+    double fDist = irRead(0);
+    double bDist = irRead(1);
+    double lDist = irRead(3);
+    double rDist = irRead(2);
+
+    double leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
+    double rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
+
+
+    stepperRight.setSpeed(rightSpeed);//set right motor speed
+    stepperLeft.setSpeed(leftSpeed);//set left motor speed
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor
+      
+  }
 }
 
 
@@ -250,53 +552,6 @@ void stop() {
   stepperLeft.stop();//stop left motor
 }
 
-/*
-  The moveCircle function takes in a diameter in inches and a direction integer (1 for left, -1 for right).
-  The robot will then drive in a circle of the given diameter in the given direction.
-*/
-void moveCircle(int diam, int dir) {
-
-  digitalWrite(redLED, HIGH); //turn on red LED
-  digitalWrite(grnLED, LOW); //turn off green LED
-  
-  double robotWidth = 8.5; // inches
-  double cWheel = 10.75; // inches
-  double innerR = (diam/2) - (robotWidth/2);
-  double outerR = (diam/2) + (robotWidth/2);
-
-  double angleDifferential = 1.16; // Constant to account for slippage and friction
-  
-  double arcOuter = angleDifferential*2*3.14159265358*outerR; // solve for distance each wheel needs to travel
-  double arcInner = angleDifferential*2*3.14159265358*innerR;
-  double innerPulses = arcInner*(1/cWheel)*(800); //solve for pulses each motor needs to go
-  double outerPulses = arcOuter*(1/cWheel)*(800); //800 pulses per rotation
-  
-  int outerSpeed = 2000; // pulses per second (pick a reference speed to base the other one off of)
-  int driveTime = outerPulses/outerSpeed; // seconds
-  int innerSpeed = innerPulses/driveTime; // pulses per second
-
-  int tickDifferential = 280; // This values evened out the ticks traveled by the inner and outer wheels
-
-  if(dir == 1){
-    turn(outerSpeed, innerSpeed, outerPulses, innerPulses+tickDifferential);
-  }else{
-    turn(innerSpeed, outerSpeed, innerPulses+tickDifferential, outerPulses);
-  }
-}
-
-/*
-  The moveFigure8() function takes the diameter in inches as the input. It uses the moveCircle() function
-  twice with 2 different direcitons to create a figure 8 with circles of the given diameter.
-*/
-void moveFigure8(int diam, int dir){
-  digitalWrite(redLED, HIGH); // turn on red LED
-  digitalWrite(grnLED, LOW); // turn off green LED
-  digitalWrite(ylwLED, HIGH); // turn on yellow LED
-
-  moveCircle(diam, dir); // circle to the left
-  delay(250);
-  moveCircle(diam, -dir); // circle to the right
-}
 
 /*
   The goToAngle function takes in an angle in degrees (positive values are left, negative are right),
@@ -338,19 +593,4 @@ void goToGoal(int x, int y) {
   int distance = sqrt((x*x)+(y*y)); // calculate distance from desired coordinates
   forward(distance); // drives distance
  
-}
-
-/*
-  The moveSquare function takes in a side length in inches,
-  then drives the robot in a square with sides of that length.
-*/
-void moveSquare(int side) {
-  digitalWrite(redLED, HIGH);//turn on red LED
-  digitalWrite(ylwLED, HIGH);//turn on yellow LED
-
-  // iterates through all 4 sides of the square
-  for(int i = 0; i<4; i++){
-    forward(side);
-    goToAngle(90);
-  }
 }
