@@ -96,183 +96,138 @@ void loop()
 {
 
 //  smartWander();
-  goalHoming(35, 22);
+  goalHoming(72, 0);
   delay(10000);
 }
 
+/* randomWander drives the robot around randomly
+ */
 void randomWander(){
-
-  digitalWrite(redLED, LOW);
-  digitalWrite(grnLED, HIGH);
-  digitalWrite(ylwLED, LOW);
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, HIGH);
 
   if (random(0,10) > 5){
-        // Random change to speed, position and acceleration
-        // Make sure we dont get 0 speed or accelerations
+        // drive a random distance
         delay(500);
-        forward(random(5,13));
+        forward(random(-6,6));
     }
     else {
+      // turn to a random angle
       delay(500);
-      pivot(random(-180, 180));
+      pivot(random(-90, 90));
     }
 }
 
+/* smartWander randomly moves around while avoiding obstacles
+ */
 void smartWander(){
-  // while the robot sees something, run the shyKid behavior
-  while(irRead(0) < 15 || irRead(1) < 15 || irRead(2) < 15 || irRead(3) < 15){
-    digitalWrite(redLED, LOW);
-    digitalWrite(grnLED, LOW);
-    digitalWrite(ylwLED, HIGH);
-
-    // read the 4 ir sensors
-    double fDist = irRead(0);
-    double bDist = irRead(1);
-    double lDist = irRead(3);
-    double rDist = irRead(2);
-
-    double leftSpeed = 0;
-    double rightSpeed = 0;
-
-    // if objects on both front and back, spin 90 degrees and move away
-    if(fDist < 12 && bDist < 12 && lDist > 12 && rDist > 12){
-      spin(90);
-      forward(12);
-    }
-    
-    // if no objects within 12 inches, do nothing
-    else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
-      double leftSpeed = 0;
-      double rightSpeed = 0;
-    }
-    
-    // if an object is in front, subtract the side force vectors
-    else if(fDist < 12){
-      leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
-      rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
-    } 
-    
-    // if an object is behind, add the side force vectors
-    else if(bDist<12){
-      leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
-      rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
-    }
-    
-    // default to subtracting the side force vectos
-    else{
-      leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
-      rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
-    }
-   
-    stepperRight.setSpeed(rightSpeed);//set right motor speed
-    stepperLeft.setSpeed(leftSpeed);//set left motor speed
-
-    double beginMillis = millis();
-    while(millis()<beginMillis + 50){
-      stepperRight.runSpeed();//move right motor
-      stepperLeft.runSpeed();//move left motor 
-    }
-  }
   
-  if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
-    digitalWrite(redLED, LOW);
-    digitalWrite(grnLED, LOW);
-    digitalWrite(ylwLED, HIGH);
-    double fDist = irRead(0);
-    double bDist = irRead(1);
-    double lDist = irRead(3);
-    double rDist = irRead(2);
-    Serial.print('yay');
+  // while the robot sees something, run the shyKid behavior to avoid the obstacle
+  while(irRead(0) < 15 || irRead(1) < 15 || irRead(2) < 15 || irRead(3) < 15){
+    shyKid()
+  }
 
-    if (random(0,10) > 5){
-          // Random change to speed, position and acceleration
-          // Make sure we dont get 0 speed or accelerations
-          delay(500);
-          forward(random(-6,6));
-      }
-      else {
-        delay(500);
-        pivot(random(-90, 90));
-      }
+  // if the robot does not see anything, then randomly wander
+  if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
+    randomWander();
   }
 }
 
+/* The goalHoming method moves the robot toward a goal while avoiding obstacles.
+ */
 void goalHoming(double goalX, double goalY){
+
+  digitalWrite(redLED, HIGH);//turn on red LED
+  digitalWrite(ylwLED, HIGH);//turn on yellow LED
+  digitalWrite(grnLED, HIGH);//turn on green LED
+  
   double currentX = 0;
   double currentY = 0;
   double currentAngle = 0;
+  
+  double distanceError = 0.0931; // to account for overshoot from moving forward in 1 inch increments
 
   boolean atGoal = false;
 
   // while not at goal, run the goal homing
   while( !atGoal ){
+    // check if we're at the goal within a range of +- 1 inch
     atGoal = ( (goalX+1) > currentX && currentX > (goalX-1) ) && ( (goalY+1) > currentY && currentY > (goalY-1) );
-    
+
+    // calculate angle to turn toward goal
+    // deltaX and deltaY are the x and y distances between the robot and the goal
     double deltaX = goalX-currentX;
     double deltaY = goalY-currentY;
     double goalAngle = atan2(deltaY, deltaX); // calculates angle from desired coordinates
     
-    Serial.print("currentX: ");
-    Serial.println(currentX);
-    Serial.print("currentY: ");
-    Serial.println(currentY);
-    Serial.print("Currentangle: ");
-    Serial.println(currentAngle);
-    Serial.print("atGoal: ");
-    Serial.println(atGoal);
-    
+    // delta angle is the angle we need to turn so we face the goal based on where we are currently pointing
     double deltaAngle = goalAngle - currentAngle;
-    goToAngle(deltaAngle*180/3.14159265358); // turns to the angle
+    goToAngle(deltaAngle*180/3.14159265358);
     currentAngle += deltaAngle;
-    currentAngle = reduceAngle(currentAngle);
-    delay(1000);
 
-    // while no obstacle, go to goal as usual
+    // if the current angle is >360 degrees, reduces the angle to below 360 degrees
+    currentAngle = reduceAngle(currentAngle);
+
+    // while no obstacle, drive toward goal
+    // after 10 iterations (count), break out of the the loop so the robot readjusts to turn to the goal
     int count = 0;
-    while(irRead(0) > 9 && irRead(2) > 9 && irRead(3) > 9 && !atGoal && count < 10 ){
+    while(irRead(0) > 5 && !atGoal && count < 10 ){
       deltaX = goalX-currentX;
       deltaY = goalY-currentY;
     
       forward(1); // drives forward 1 inch
-      double distanceError = 0.0531;
       currentX = currentX + cos(currentAngle) - distanceError;
       currentY = currentY + sin(currentAngle) - distanceError;
 
+      // check if we're at the goal yet
       atGoal = ( (goalX+1) > currentX && currentX > (goalX-1) ) && ( (goalY+1) > currentY && currentY > (goalY-1) );
-      Serial.print("currentX: ");
-      Serial.println(currentX);
-      Serial.print("currentY: ");
-      Serial.println(currentY);
-      Serial.print("Currentangle: ");
-      Serial.println(currentAngle);
-      Serial.print("atGoal: ");
-      Serial.println(atGoal);
+
       count++;
 
     }
 
-    // turn away from obstacle
-    if(irRead(0) < 9){
-      goToAngle(-90);
-      currentAngle += -3.14159265358/2;
-      currentAngle = reduceAngle(currentAngle);
-    }
-    while((irRead(2) < 15 || irRead(3) < 15) && !atGoal){
-      forward(1);
-      double distanceError = 0.0531;
-      currentX = currentX + cos(currentAngle) - distanceError;
-      currentY = currentY + sin(currentAngle) - distanceError;
 
-      atGoal = ( (goalX+1) > currentX && currentX > (goalX-1) ) && ( (goalY+1) > currentY && currentY > (goalY-1) );
-      Serial.print("currentX: ");
-      Serial.println(currentX);
-      Serial.print("currentY: ");
-      Serial.println(currentY);
-      Serial.print("Currentangle: ");
-      Serial.println(currentAngle);
-      Serial.print("atGoal: ");
-      Serial.println(atGoal);
+    // if we see an object, turn left 90 degrees, then drive until we can't see it anymore
+    if(irRead(0) < 6){
+      goToAngle(85);
+      currentAngle += 3.14159265358/2;
+      currentAngle = reduceAngle(currentAngle);
+      
+      while((irRead(2) < 15 || irRead(3) < 15) && !atGoal){
+        forward(1);
+        currentX = currentX + cos(currentAngle) - distanceError;
+        currentY = currentY + sin(currentAngle) - distanceError;
+  
+        atGoal = ( (goalX+1) > currentX && currentX > (goalX-1) ) && ( (goalY+1) > currentY && currentY > (goalY-1) );
+
+      }
+      // once we no longer see the object, move forward to clear the robot body from contacting the object,
+      // turn back, and drive forward to let the sensor see the object again
+      if( !atGoal ){
+        forward(4);
+        currentX = currentX + 4*cos(currentAngle) - distanceError;
+        currentY = currentY + 4*sin(currentAngle) - distanceError;
+        goToAngle(-95);
+        currentAngle += -3.14159265358/2;
+        currentAngle = reduceAngle(currentAngle);
+        forward(12);
+        currentX = currentX + 12*cos(currentAngle) - distanceError;
+        currentY = currentY + 12*sin(currentAngle) - distanceError;
+      }
+
+      // drive forward until we don't see the object anymore
+      while((irRead(2) < 15 || irRead(3) < 15) && !atGoal){
+        forward(1);
+        currentX = currentX + cos(currentAngle) - distanceError;
+        currentY = currentY + sin(currentAngle) - distanceError;
+
+        // check if we're within 1 inch of the goal
+        atGoal = ( (goalX+1) > currentX && currentX > (goalX-1) ) && ( (goalY+1) > currentY && currentY > (goalY-1) );
+      }
     }
+
+    
   }
 }
 
@@ -343,7 +298,6 @@ void aggressiveKid(){
 void shyKid(){
   // if no objects within 15 inches, do nothing
   if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
-    stop();
     digitalWrite(redLED, LOW);
     digitalWrite(grnLED, LOW);
     digitalWrite(ylwLED, LOW);
@@ -519,9 +473,9 @@ void forward(int distance) {
   int ticksPerInch = 76;
   int ticksToDrive = distance*ticksPerInch;
   
-  digitalWrite(redLED, LOW);//turn off red LED
-  digitalWrite(grnLED, HIGH);//turn on green LED
-  digitalWrite(ylwLED, LOW);//turn off yellow LED
+//  digitalWrite(redLED, LOW);//turn off red LED
+//  digitalWrite(grnLED, HIGH);//turn on green LED
+//  digitalWrite(ylwLED, LOW);//turn off yellow LED
 
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
@@ -559,7 +513,7 @@ void goToAngle(int angle) {
   double ticksPerDegree = 5.62;
   int ticksToDrive = (int)(angle*ticksPerDegree);
 
-  digitalWrite(grnLED, HIGH);//turn on green LED
+//  digitalWrite(grnLED, HIGH);//turn on green LED
 
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
