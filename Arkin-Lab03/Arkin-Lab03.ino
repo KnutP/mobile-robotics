@@ -40,18 +40,21 @@ MultiStepper steppers;//create instance to control multiple steppers at the same
 
 #define pauseTime 2500 //time before robot moves
 
-double motorSpeed = 400;
+double motorSpeed = -400;
 enum State { center, right, left, front, wander};
-State state = front;
+State state = wander;
 
-int ls_curr;    //left sonar current reading
-int li_curr;    //left ir current reading
-int rs_curr;    //right sonar current reading
-int ri_curr;    //right ir current reading
+double lError = 0;
+double rError = 0;
 
-int lError;
-int rError;
+double lPrevError = 0;
+double rPrevError = 0;
 
+double currentTime = 0;
+double lastTime = 0;
+
+double drEdt = 0;
+double dlEdt = 0;
 
 void setup()
 {
@@ -138,17 +141,22 @@ void wallFollow(){
    based upon the the lab requirements.
 */
 //void updateState() {
+//
 //  
-//  if (!(flag)) { //no sensors triggered
+//  double rDist = irRead(2);
+//  double lDist = irRead(3);
+//  double fDist = irRead(0);
+//  
+//  if (rDist > 15 && lDist > 15 && fDist > 15) { //no sensors triggered
 //     state = randomWander;
 //  }
-//  else if (bitRead(flag, obRight) && !bitRead(flag, obLeft) ) {
+//  else if (rDist < 15 && lDist > 15 && fDist > 15) {
 //    state = right;
 //  }
-//  else if (bitRead(flag, obLeft) && !bitRead(flag, obRight) ) {
+//  else if (rDist > 15 && lDist < 15 && fDist > 15) {
 //    state = left;
 //  }
-//  else if (bitRead(flag, obLeft) && bitRead(flag, obRight) ) {
+//  else if (rDist < 15 && lDist < 15 && fDist > 15 ) {
 //    state = center;
 //  }
 //
@@ -159,7 +167,22 @@ void wallFollow(){
 /* Follow a wall on the left side of the robot using P control
  */
 void leftWallFollow(){
+  updateError(); // TAKE OUT FOR FULL PROGRAM
 
+  double kp = 30.69; // nice
+  double kd = 42.0;
+
+  double rightSpeed = motorSpeed + kp*lError + kd*dlEdt;
+  double leftSpeed = motorSpeed /*+ kp*rError*/;
+
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+  double beginMillis = millis();
+  while(millis()<beginMillis + 50){
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor 
+  }
   
 }
 
@@ -168,10 +191,22 @@ void leftWallFollow(){
 void rightWallFollow(){
   updateError(); // TAKE OUT FOR FULL PROGRAM
 
-  double kp = 11;
+  double kp = 30.69; // nice
+  double kd = 10.0;
 
-  double leftSpeed = motorSpeed - kp*rError;
-  double rightSpeed = motorSpeed + kp*rError;
+  Serial.println(drEdt);
+  if(irRead(2) > 8){
+    kp *= 3;
+  }
+
+  double speedMultiplier= 1;
+  if(irRead(1) < 8){
+    Serial.println(irRead(1));
+    speedMultiplier = -3;
+  }
+
+  double leftSpeed = (motorSpeed + kp*rError + kd*drEdt)*speedMultiplier;
+  double rightSpeed = motorSpeed /*+ kp*rError*/;
 
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
@@ -183,6 +218,24 @@ void rightWallFollow(){
   }
 }
 
+void outsideCorner(){
+  updateError(); // TAKE OUT FOR FULL PROGRAM
+
+  double kp = 30.69; // nice
+  double kd = 42.0;
+
+  double leftSpeed = motorSpeed + kp*rError + kd*drEdt;
+  double rightSpeed = motorSpeed /*+ kp*rError*/;
+
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+  double beginMillis = millis();
+  while(millis()<beginMillis + 50){
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor 
+  }
+}
 /* Keep the robot centered between two walls using P control
  */
 void centerWallFollow(){
@@ -197,17 +250,19 @@ void collide(){
   
 }
 
-
+/*
+ * 
+ */
 void updateError(){
 
   double rDist = irRead(2);
   double lDist = irRead(3);
 
-  if(rDist>7){
-    rError = 7-rDist;
+  if(rDist>6){
+    rError = 6-rDist;
   }
-  else if(rDist<5){
-    rError = 5-rDist;
+  else if(rDist<6){
+    rError = 6-rDist;
   }
 
   if(lDist>7){
@@ -216,7 +271,23 @@ void updateError(){
   else if(lDist<5){
     lError = 5-lDist;
   }
+
+  updateDerivatives();
   
+}
+
+/*
+ * 
+ */
+double updateDerivatives(){
+  currentTime = millis();
+
+  drEdt = (rError-rPrevError)/(currentTime - lastTime);
+  dlEdt = (lError-lPrevError)/(currentTime - lastTime);
+  
+  rPrevError = rError;
+  lPrevError = lError;
+  lastTime = currentTime;
 }
 
 
