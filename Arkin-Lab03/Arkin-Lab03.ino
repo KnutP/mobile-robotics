@@ -41,7 +41,7 @@ MultiStepper steppers;//create instance to control multiple steppers at the same
 #define pauseTime 2500 //time before robot moves
 
 double motorSpeed = -400;
-enum State { center, right, left, front, wander};
+enum State { center, right, left, obstacle, wander};
 State state = wander;
 
 double lError = 0;
@@ -55,6 +55,8 @@ double lastTime = 0;
 
 double drEdt = 0;
 double dlEdt = 0;
+
+double lastMillis = 0;
 
 void setup()
 {
@@ -113,11 +115,12 @@ void setup()
 void loop(){
 
   rightWallFollow();
+//  Serial.println(irRead(3));// Back = 1, left = 3, right = 2, front = 0
 }
 
 
 void wallFollow(){
-
+  updateState();
   switch(state)
   {
       case center: centerWallFollow();
@@ -126,13 +129,13 @@ void wallFollow(){
           break;
       case left : leftWallFollow();
           break;
-      case front : collide();
+      case obstacle : collide();
           break;
       case wander: randomWander();
           break;
   }
 
-//  updateState();
+ 
 
 }
 
@@ -140,41 +143,57 @@ void wallFollow(){
    This is a sample updateState() function, the description and code should be updated to reflect the actual state machine that you will implement
    based upon the the lab requirements.
 */
-//void updateState() {
-//
-//  
-//  double rDist = irRead(2);
-//  double lDist = irRead(3);
-//  double fDist = irRead(0);
-//  
-//  if (rDist > 15 && lDist > 15 && fDist > 15) { //no sensors triggered
-//     state = randomWander;
-//  }
-//  else if (rDist < 15 && lDist > 15 && fDist > 15) {
-//    state = right;
-//  }
-//  else if (rDist > 15 && lDist < 15 && fDist > 15) {
-//    state = left;
-//  }
-//  else if (rDist < 15 && lDist < 15 && fDist > 15 ) {
-//    state = center;
-//  }
-//
-//  updateError();
-//  
-//}
+void updateState() {
 
-/* Follow a wall on the left side of the robot using P control
+  double rDist = irRead(2);
+  double lDist = irRead(3);
+  double bDist = irRead(1);
+  
+  if (rDist > 15 && lDist > 15 && bDist > 15 && millis()-lastMillis > 4000) { //no sensors triggered
+     state = wander;
+  }
+  else if (  rDist < 15 && lDist > 15 ) { // only right sensor triggered
+    lastMillis = millis();
+    state = right;
+  }
+  else if ( rDist > 15 && lDist < 15 ) { // only left sensor triggered
+    lastMillis = millis();
+    state = left;
+  }
+  else if ( rDist > 15 && lDist > 15 && bDist < 4){ // only back sensor triggered
+    state = obstacle;
+  }
+  else if ( rDist < 15 && lDist < 15 ) { // left and right sensor triggered
+    state = center;
+  }
+  
+}
+
+/* Follow a wall on the left side of the robot using PD control
  */
 void leftWallFollow(){
+
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, HIGH);
+  
   updateError(); // TAKE OUT FOR FULL PROGRAM
 
   double kp = 30.69; // nice
-  double kd = 42.0;
+  double kd = 10.0;
 
-  double rightSpeed = motorSpeed + kp*lError + kd*dlEdt;
+
+  if(irRead(3) > 8){
+    kp *= 5;
+  }
+
+  if(irRead(1) < 4){
+    goToAngle(90);
+  }
+
+  double rightSpeed = (motorSpeed + kp*lError + kd*dlEdt);
   double leftSpeed = motorSpeed /*+ kp*rError*/;
-
+  Serial.println(rightSpeed);
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
@@ -183,12 +202,16 @@ void leftWallFollow(){
     stepperRight.runSpeed();//move right motor
     stepperLeft.runSpeed();//move left motor 
   }
-  
 }
 
-/* Follow a wall on the right side of the robot using P control
+/* Follow a wall on the right side of the robot using PD control
  */
 void rightWallFollow(){
+
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, HIGH);
+  
   updateError(); // TAKE OUT FOR FULL PROGRAM
 
   double kp = 30.69; // nice
@@ -196,16 +219,15 @@ void rightWallFollow(){
 
   Serial.println(drEdt);
   if(irRead(2) > 8){
-    kp *= 3;
+    kp *= 5;
   }
 
-  double speedMultiplier= 1;
-  if(irRead(1) < 8){
+  if(irRead(1) < 4){
     Serial.println(irRead(1));
-    speedMultiplier = -3;
+      goToAngle(-90);
   }
 
-  double leftSpeed = (motorSpeed + kp*rError + kd*drEdt)*speedMultiplier;
+  double leftSpeed = (motorSpeed + kp*rError + kd*drEdt);
   double rightSpeed = motorSpeed /*+ kp*rError*/;
 
   stepperRight.setSpeed(rightSpeed);//set right motor speed
@@ -218,28 +240,48 @@ void rightWallFollow(){
   }
 }
 
-void outsideCorner(){
-  updateError(); // TAKE OUT FOR FULL PROGRAM
 
-  double kp = 30.69; // nice
-  double kd = 42.0;
-
-  double leftSpeed = motorSpeed + kp*rError + kd*drEdt;
-  double rightSpeed = motorSpeed /*+ kp*rError*/;
-
-  stepperRight.setSpeed(rightSpeed);//set right motor speed
-  stepperLeft.setSpeed(leftSpeed);//set left motor speed
-
-  double beginMillis = millis();
-  while(millis()<beginMillis + 50){
-    stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
-  }
-}
 /* Keep the robot centered between two walls using P control
  */
 void centerWallFollow(){
 
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, HIGH);
+  
+  updateError(); // TAKE OUT FOR FULL PROGRAM
+
+  double leftSpeed = 0;
+  double rightSpeed = 0;
+  double deltaError = lError - rError;
+  double deltadEdt = dlEdt - drEdt;
+
+  double kp = 20.69; // nice
+  double kd = 10.0;
+
+  if(irRead(1) < 4){
+      goToAngle(-90);
+  }
+
+  if(deltaError>0){
+      leftSpeed = (motorSpeed - kp*deltaError - kd*deltadEdt);
+      rightSpeed = motorSpeed /*+ kp*rError*/;
+  }
+  else{
+  rightSpeed = (motorSpeed + kp*deltaError + kd*deltadEdt);
+  leftSpeed = motorSpeed /*+ kp*rError*/;
+  }
+
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+  stepperRight.setMaxSpeed(abs(rightSpeed));//set right motor speed
+  stepperLeft.setMaxSpeed(abs(leftSpeed));//set left motor speed
+
+  double beginMillis = millis();
+  while(millis()<beginMillis + 50){
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor 
+  }
   
 }
 
@@ -247,7 +289,9 @@ void centerWallFollow(){
  * 
  */
 void collide(){
-  
+    if(irRead(1) < 4){
+    goToAngle(90);
+  }
 }
 
 /*
@@ -265,11 +309,11 @@ void updateError(){
     rError = 6-rDist;
   }
 
-  if(lDist>7){
-    lError = 7-lDist;
+  if(lDist>6){
+    lError = 6-lDist;
   }
-  else if(lDist<5){
-    lError = 5-lDist;
+  else if(lDist<6){
+    lError = 6-lDist;
   }
 
   updateDerivatives();
@@ -321,9 +365,9 @@ double irRead(int pin){
  *  manuever using a random value.
  */
 void randomWander(){
-  digitalWrite(redLED, HIGH);
-  digitalWrite(grnLED, LOW);
-  digitalWrite(ylwLED, HIGH);
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, LOW);
 
   if (random(0,10) > 5){
         // drive a random distance
