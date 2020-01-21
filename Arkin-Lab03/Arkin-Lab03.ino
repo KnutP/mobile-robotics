@@ -80,9 +80,9 @@ void setup()
   digitalWrite(grnLED, LOW);//turn off green LED
 
 
-  stepperRight.setMaxSpeed(2500);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
+  stepperRight.setMaxSpeed(4000);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
   stepperRight.setAcceleration(10000);//set desired acceleration in steps/s^2
-  stepperLeft.setMaxSpeed(2500);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
+  stepperLeft.setMaxSpeed(4000);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
   stepperLeft.setAcceleration(10000);//set desired acceleration in steps/s^2
   steppers.addStepper(stepperRight);//add right motor to MultiStepper
   steppers.addStepper(stepperLeft);//add left motor to MultiStepper
@@ -113,12 +113,17 @@ void setup()
 }
 
 void loop(){
-
-  rightWallFollow();
+//rightWallFollow();
+  wallFollow();
 //  Serial.println(irRead(3));// Back = 1, left = 3, right = 2, front = 0
 }
 
 
+/*
+ * wallFollow uses the behaviors from other functions to follow walls
+ * on the left and right of the robot, follow a hallway, or randomly wander.
+ * It switches between behaviors based on the sensor input to the robot.
+ */
 void wallFollow(){
   updateState();
   switch(state)
@@ -140,8 +145,8 @@ void wallFollow(){
 }
 
 /*
-   This is a sample updateState() function, the description and code should be updated to reflect the actual state machine that you will implement
-   based upon the the lab requirements.
+ * updateState checks which sensors are currently triggered and updates the
+ * state of the robot accordingly.
 */
 void updateState() {
 
@@ -152,13 +157,13 @@ void updateState() {
   if (rDist > 15 && lDist > 15 && bDist > 15 && millis()-lastMillis > 4000) { //no sensors triggered in last 4 seconds
      state = wander;
   }
-  else if (  rDist < 15 && lDist > 15 ) { // only right sensor triggered
-    lastMillis = millis();
-    state = right;
-  }
-  else if ( rDist > 15 && lDist < 15 ) { // only left sensor triggered
+  else if (  rDist < 15 && lDist > 15 ) { // only left sensor triggered
     lastMillis = millis();
     state = left;
+  }
+  else if ( rDist > 15 && lDist < 15 ) { // only right sensor triggered
+    lastMillis = millis();
+    state = right;
   }
   else if ( rDist > 15 && lDist > 15 && bDist < 4){ // only back sensor triggered
     lastMillis = millis();
@@ -171,42 +176,8 @@ void updateState() {
   
 }
 
-/* Follow a wall on the left side of the robot using PD control
- */
-void leftWallFollow(){
-
-  digitalWrite(redLED, LOW);
-  digitalWrite(grnLED, HIGH);
-  digitalWrite(ylwLED, HIGH);
-  
-  updateError();
-
-  double kp = 30.69; // nice
-  double kd = 10.0;
-
-
-  if(irRead(3) > 8){
-    kp *= 5;
-  }
-
-  if(irRead(1) < 4){
-    goToAngle(90);
-  }
-
-  double rightSpeed = (motorSpeed + kp*lError + kd*dlEdt);
-  double leftSpeed = motorSpeed /*+ kp*rError*/;
-  
-  stepperRight.setSpeed(rightSpeed);//set right motor speed
-  stepperLeft.setSpeed(leftSpeed);//set left motor speed
-
-  double beginMillis = millis();
-  while(millis()<beginMillis + 50){
-    stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
-  }
-}
-
-/* Follow a wall on the right side of the robot using PD control
+/* 
+ *  Follow a wall on the left side of the robot using PD control
  */
 void rightWallFollow(){
 
@@ -219,18 +190,57 @@ void rightWallFollow(){
   double kp = 30.69; // nice
   double kd = 10.0;
 
-  Serial.println(drEdt);
-  if(irRead(2) > 8){
-    kp *= 5;
+  // if we lose the wall, turn toward where it was
+  double speedDifferential = 1;
+  if(irRead(3) > 8){
+    speedDifferential = 0;
   }
 
+  // if we see a wall in front, turn to avoid it
   if(irRead(1) < 4){
-    Serial.println(irRead(1));
-      goToAngle(-90);
+    goToAngle(90);
+  }
+
+  double rightSpeed = (motorSpeed + kp*lError + kd*dlEdt);
+  double leftSpeed = speedDifferential*motorSpeed;
+  
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+  double beginMillis = millis();
+  while(millis()<beginMillis + 50){
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor 
+  }
+}
+
+/* 
+ *  Follow a wall on the right side of the robot using PD control
+ */
+void leftWallFollow(){
+
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, HIGH);
+  
+  updateError();
+
+  double kp = 30.69; // nice
+  double kd = 10.0;
+
+  double speedDifferential = 1;
+  // if we lose the wall, turn toward where it was
+  if(irRead(2) > 8){
+    speedDifferential = 0;
+  }
+
+  // if we see a wall in front, turn to avoid it
+  if(irRead(1) < 4){
+    goToAngle(-90);
   }
 
   double leftSpeed = (motorSpeed + kp*rError + kd*drEdt);
-  double rightSpeed = motorSpeed /*+ kp*rError*/;
+  double rightSpeed = motorSpeed*speedDifferential;
 
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
@@ -243,7 +253,8 @@ void rightWallFollow(){
 }
 
 
-/* Keep the robot centered between two walls using P control
+/* 
+ *  Keep the robot centered between two walls using PD control
  */
 void centerWallFollow(){
 
@@ -251,7 +262,7 @@ void centerWallFollow(){
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, HIGH);
   
-  updateError(); // TAKE OUT FOR FULL PROGRAM
+  updateError();
 
   double leftSpeed = 0;
   double rightSpeed = 0;
@@ -261,43 +272,51 @@ void centerWallFollow(){
   double kp = 20.69; // nice
   double kd = 10.0;
 
-  if(irRead(1) < 4){
-      goToAngle(-90);
-  }
 
   if(deltaError>0){
       leftSpeed = (motorSpeed - kp*deltaError - kd*deltadEdt);
-      rightSpeed = motorSpeed /*+ kp*rError*/;
+      rightSpeed = motorSpeed;
+
+    // if we see a wall in front, turn to avoid it
+    if(irRead(1) < 4){
+        goToAngle(-90);
+    }
   }
   else{
-  rightSpeed = (motorSpeed + kp*deltaError + kd*deltadEdt);
-  leftSpeed = motorSpeed /*+ kp*rError*/;
+    rightSpeed = (motorSpeed + kp*deltaError + kd*deltadEdt);
+    leftSpeed = motorSpeed;
+
+    // if we see a wall in front, turn to avoid it
+    if(irRead(1) < 4){
+        goToAngle(90);
+    }
   }
 
-  stepperRight.setSpeed(rightSpeed);//set right motor speed
-  stepperLeft.setSpeed(leftSpeed);//set left motor speed
-  stepperRight.setMaxSpeed(abs(rightSpeed));//set right motor speed
-  stepperLeft.setMaxSpeed(abs(leftSpeed));//set left motor speed
+  // set motor speeds
+  stepperRight.setSpeed(rightSpeed);
+  stepperLeft.setSpeed(leftSpeed);
 
+  // run the motors for a small timestep
   double beginMillis = millis();
   while(millis()<beginMillis + 50){
-    stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
+    stepperRight.runSpeed();
+    stepperLeft.runSpeed(); 
   }
   
 }
 
-/*
- * 
+/* collide is the behavior to avoid obstacles in front of the robot
  */
 void collide(){
-    if(irRead(1) < 4){
+  // if we see an obstacle in front, then turn to avoid it  
+  if(irRead(1) < 4){
     goToAngle(90);
   }
 }
 
-/*
- * 
+/* updateError is a helper function that reads the left and right
+ * ir sensors and calculates the error on the left and right sides of the robot.
+ * It also calls the updateDerivatives helper function to update the error derivatives.
  */
 void updateError(){
 
@@ -322,8 +341,10 @@ void updateError(){
   
 }
 
-/*
- * 
+/* updateDerivatives is a helper function that calculates
+ *  the change in error over the change in time
+ *  for the left and right sides of the robot since the
+ *  last time the function was called.
  */
 double updateDerivatives(){
   currentTime = millis();
