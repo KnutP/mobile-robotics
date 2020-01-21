@@ -149,7 +149,7 @@ void updateState() {
   double lDist = irRead(3);
   double bDist = irRead(1);
   
-  if (rDist > 15 && lDist > 15 && bDist > 15 && millis()-lastMillis > 4000) { //no sensors triggered
+  if (rDist > 15 && lDist > 15 && bDist > 15 && millis()-lastMillis > 4000) { //no sensors triggered in last 4 seconds
      state = wander;
   }
   else if (  rDist < 15 && lDist > 15 ) { // only right sensor triggered
@@ -161,9 +161,11 @@ void updateState() {
     state = left;
   }
   else if ( rDist > 15 && lDist > 15 && bDist < 4){ // only back sensor triggered
+    lastMillis = millis();
     state = obstacle;
   }
   else if ( rDist < 15 && lDist < 15 ) { // left and right sensor triggered
+    lastMillis = millis();
     state = center;
   }
   
@@ -177,7 +179,7 @@ void leftWallFollow(){
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, HIGH);
   
-  updateError(); // TAKE OUT FOR FULL PROGRAM
+  updateError();
 
   double kp = 30.69; // nice
   double kd = 10.0;
@@ -193,7 +195,7 @@ void leftWallFollow(){
 
   double rightSpeed = (motorSpeed + kp*lError + kd*dlEdt);
   double leftSpeed = motorSpeed /*+ kp*rError*/;
-  Serial.println(rightSpeed);
+  
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
@@ -212,7 +214,7 @@ void rightWallFollow(){
   digitalWrite(grnLED, LOW);
   digitalWrite(ylwLED, HIGH);
   
-  updateError(); // TAKE OUT FOR FULL PROGRAM
+  updateError();
 
   double kp = 30.69; // nice
   double kd = 10.0;
