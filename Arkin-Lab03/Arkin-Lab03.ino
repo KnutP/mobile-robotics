@@ -1,15 +1,16 @@
 /*
 ***********************************
   Arkin-Lab03.ino
-  Knut Peterson 12/13/19
-  Garrett Jacobs 12/13/19
+  Knut Peterson 1/26/20
+  Garrett Jacobs 1/26/20
 
-  This program will introduce subsumption architecture for the robot Arkin.
-  The layers are randomWander, shyKid, aggressiveKid, smartWander, and goalHoming.
+  This program will introduce wall following behaviors for the robot Arkin.
+  The behaviors are leftWallFollow, rightWallFollow, centerWallFollow, collide, and randomWander
+  leftWallFollow - the robot follows a wall on its left side using PD control
+  rightWallFollow - the robot follows a wall on its right side using PD control
+  centerWallFollow - the robot centers itself between two walls using PD control
+  collide - the robot avoids running into a wall that is in front of it
   randomWander - the robot moves around randomly.
-  shyKid - the robot remains in place until an obstacle enters its line of sight, then it moves away.
-  smartWander - the robot moves around randomly and avoids objects.
-  goalHoming - the robot moves to specified coordinates while avoiding obstacles along the way.
 
 */
 
@@ -140,8 +141,6 @@ void wallFollow(){
           break;
   }
 
- 
-
 }
 
 /*
@@ -177,7 +176,7 @@ void updateState() {
 }
 
 /* 
- *  Follow a wall on the left side of the robot using PD control
+ *  Follow a wall on the right side of the robot using PD control
  */
 void rightWallFollow(){
 
@@ -187,7 +186,7 @@ void rightWallFollow(){
   
   updateError();
 
-  double kp = 30.69; // nice
+  double kp = 30;
   double kd = 10.0;
 
   // if we lose the wall, turn toward where it was
@@ -215,7 +214,7 @@ void rightWallFollow(){
 }
 
 /* 
- *  Follow a wall on the right side of the robot using PD control
+ *  Follow a wall on the left side of the robot using PD control
  */
 void leftWallFollow(){
 
@@ -225,7 +224,7 @@ void leftWallFollow(){
   
   updateError();
 
-  double kp = 30.69; // nice
+  double kp = 30;
   double kd = 10.0;
 
   double speedDifferential = 1;
@@ -269,7 +268,7 @@ void centerWallFollow(){
   double deltaError = lError - rError;
   double deltadEdt = dlEdt - drEdt;
 
-  double kp = 20.69; // nice
+  double kp = 20;
   double kd = 10.0;
 
 
@@ -415,60 +414,7 @@ double reduceAngle(double angle){
   }
 }
 
-void shyKid(){
-  // if no objects within 15 inches, do nothing
-  if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
-    digitalWrite(redLED, LOW);
-    digitalWrite(grnLED, LOW);
-    digitalWrite(ylwLED, LOW);
-  }else{
-    digitalWrite(redLED, LOW);
-    digitalWrite(grnLED, LOW);
-    digitalWrite(ylwLED, HIGH);
 
-    // read the 4 ir sensors
-    double fDist = irRead(0);
-    double bDist = irRead(1);
-    double lDist = irRead(3);
-    double rDist = irRead(2);
-
-    double leftSpeed = 0;
-    double rightSpeed = 0;
-
-    // if objects on both front and back, spin 90 degrees and move away
-    if(fDist < 12 && bDist < 12 && lDist > 12 && rDist > 12){
-      spin(90);
-      forward(12);
-    }
-    
-    // if no objects within 12 inches, do nothing
-    else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
-      double leftSpeed = 0;
-      double rightSpeed = 0;
-    }
-    
-    // if an object is behind, add the side force vectors
-    else if(bDist<12){
-      leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
-      rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
-    }
-    
-    // default to subtracting the side force vectos
-    else{
-      leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
-      rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
-    }
-   
-    stepperRight.setSpeed(rightSpeed);//set right motor speed
-    stepperLeft.setSpeed(leftSpeed);//set left motor speed
-
-    double beginMillis = millis();
-    while(millis()<beginMillis + 50){
-      stepperRight.runSpeed();//move right motor
-      stepperLeft.runSpeed();//move left motor 
-    }
-  }
-}
 
 /*This function, runToStop(), will run the robot until the target is achieved and
    then stop it
