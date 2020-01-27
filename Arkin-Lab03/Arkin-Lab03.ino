@@ -114,9 +114,9 @@ void setup()
 }
 
 void loop(){
-//rightWallFollow();
+  
   wallFollow();
-//  Serial.println(irRead(3));// Back = 1, left = 3, right = 2, front = 0
+  
 }
 
 
