@@ -1,6 +1,6 @@
 /*
 ***********************************
-  Arkin-Lab03.ino
+  Arkin-Lab04.ino
   Knut Peterson 1/26/20
   Garrett Jacobs 1/26/20
 
@@ -41,8 +41,8 @@ MultiStepper steppers;//create instance to control multiple steppers at the same
 
 #define pauseTime 2500 //time before robot moves
 
-double motorSpeed = -400;
-enum State { center, right, left, obstacle, wander};
+double motorSpeed = -800;
+enum State { light, obstacle, wander};
 State state = wander;
 
 double lError = 0;
@@ -89,7 +89,7 @@ void setup()
   steppers.addStepper(stepperLeft);//add left motor to MultiStepper
   digitalWrite(stepperEnable, stepperEnTrue);//turns on the stepper motor driver
   digitalWrite(enableLED, HIGH);//turn on enable LED
-  delay(pauseTime); //always wait 2.5 seconds before the robot moves
+  //delay(pauseTime); //always wait 2.5 seconds before the robot moves
   //Serial.begin(9600); //start serial communication at 9600 baud rate for debugging
 
   delay(3000);//wait 5 seconds
@@ -114,10 +114,12 @@ void setup()
 }
 
 void loop(){
-  
-  wallFollow();
+
+//  aggression();
+  braitenberg();
   
 }
+
 
 
 /*
@@ -125,17 +127,13 @@ void loop(){
  * on the left and right of the robot, follow a hallway, or randomly wander.
  * It switches between behaviors based on the sensor input to the robot.
  */
-void wallFollow(){
+void braitenberg(){
   updateState();
   switch(state)
   {
-      case center: centerWallFollow();
+      case light: aggression();
           break;
-      case right: rightWallFollow(); 
-          break;
-      case left : leftWallFollow();
-          break;
-      case obstacle : collide();
+      case obstacle: shyKid();
           break;
       case wander: randomWander();
           break;
@@ -153,27 +151,149 @@ void updateState() {
   double rDist = irRead(2);
   double lDist = irRead(3);
   double bDist = irRead(1);
+  double fDist = irRead(0);
+  double lLight = lightRead(4);
+  double rLight = lightRead(5);
   
-  if (rDist > 15 && lDist > 15 && bDist > 15 && millis()-lastMillis > 4000) { //no sensors triggered in last 4 seconds
-     state = wander;
-  }
-  else if (  rDist < 15 && lDist > 15 ) { // only left sensor triggered
-    lastMillis = millis();
-    state = left;
-  }
-  else if ( rDist > 15 && lDist < 15 ) { // only right sensor triggered
-    lastMillis = millis();
-    state = right;
-  }
-  else if ( rDist > 15 && lDist > 15 && bDist < 4){ // only back sensor triggered
+  if (rDist < 6 || lDist < 6 || bDist < 6 || fDist < 6) { // ir sensors see an obstacle
     lastMillis = millis();
     state = obstacle;
   }
-  else if ( rDist < 15 && lDist < 15 ) { // left and right sensor triggered
+  else if (  lLight > 300 || rLight > 300) { // photoresistors see light
     lastMillis = millis();
-    state = center;
+    state = light;
+  }
+  else if (millis()-lastMillis > 1000) { // no sensors triggered
+    state = wander;
   }
   
+}
+
+
+/* The love() Braitenberg behavior positively maps the two photoresistor readings
+ * to the motor speeds on their respective sides of the robot.
+ */
+void love(){
+  
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, HIGH);
+  
+  double kp = 1.2;
+
+  // adjust speed based on the light values
+  double leftSpeed = motorSpeed + kp*lightRead(4);
+  double rightSpeed = motorSpeed + kp*lightRead(5);
+
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+  double beginMillis = millis();
+  while(millis()<beginMillis + 50){
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor 
+  }
+  
+}
+
+/* The love() Braitenberg behavior positively maps the two photoresistor readings
+ * to the motor speeds on their respective sides of the robot.
+ */
+void fear(){
+  
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, HIGH);
+  
+  double kp = 2;
+
+  // adjust speed based on the light values
+  double leftSpeed = -kp*lightRead(4);
+  double rightSpeed = -kp*lightRead(5);
+
+
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+  double beginMillis = millis();
+  while(millis()<beginMillis + 50){
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor 
+  }
+  
+}
+
+/* The love() Braitenberg behavior positively maps the two photoresistor readings
+ * to the motor speeds on their respective sides of the robot.
+ */
+void explorer(){
+  
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, HIGH);
+  
+  double kp = 1.2;
+
+  // adjust speed based on the light values
+  double leftSpeed = motorSpeed + kp*lightRead(5);
+  double rightSpeed = motorSpeed + kp*lightRead(4);
+
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+  double beginMillis = millis();
+  while(millis()<beginMillis + 50){
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor 
+  }
+  
+}
+
+/* The aggressive() Braitenberg behavior positively maps the two photoresistor readings
+ * to the motor speeds on their respective sides of the robot.
+ */
+void aggression(){
+  
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, HIGH);
+  
+  double kp = 2;
+
+  // adjust speed based on the light values
+  double leftSpeed = -kp*lightRead(5);
+  double rightSpeed = -kp*lightRead(4);
+
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+  double beginMillis = millis();
+  while(millis()<beginMillis + 50){
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor 
+  }
+  
+}
+
+
+/* lightRead() is a helper function that reads the photoresistor sensor value 
+ *  at the given pin, scales it, and returns the value.
+ */
+double lightRead(int pin){
+  int value = 0;
+  for (int i=0; i <30; i++){
+    value = value + analogRead(pin);
+  }
+  value = value/30;
+
+  if(pin == 4){ 
+    return value; // left sensor
+  } else if(pin == 5){
+    return value; // right sensor
+  } else{
+    return 0;
+  }
+
 }
 
 
@@ -409,6 +529,63 @@ void randomWander(){
       pivot(random(-90, 90));
     }
 }
+
+
+void shyKid(){
+  // if no objects within 15 inches, do nothing
+  if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
+    digitalWrite(redLED, LOW);
+    digitalWrite(grnLED, LOW);
+    digitalWrite(ylwLED, LOW);
+  }else{
+    digitalWrite(redLED, LOW);
+    digitalWrite(grnLED, LOW);
+    digitalWrite(ylwLED, HIGH);
+
+    // read the 4 ir sensors
+    double fDist = irRead(0);
+    double bDist = irRead(1);
+    double lDist = irRead(3);
+    double rDist = irRead(2);
+
+    double leftSpeed = 0;
+    double rightSpeed = 0;
+
+    // if objects on both front and back, spin 90 degrees and move away
+    if(fDist < 12 && bDist < 12 && lDist > 12 && rDist > 12){
+      spin(90);
+      forward(12);
+    }
+    
+    // if no objects within 12 inches, do nothing
+    else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
+      double leftSpeed = 0;
+      double rightSpeed = 0;
+    }
+    
+    // if an object is behind, add the side force vectors
+    else if(bDist<12){
+      leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
+      rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
+    }
+    
+    // default to subtracting the side force vectos
+    else{
+      leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
+      rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
+    }
+   
+    stepperRight.setSpeed(rightSpeed);//set right motor speed
+    stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+    double beginMillis = millis();
+    while(millis()<beginMillis + 50){
+      stepperRight.runSpeed();//move right motor
+      stepperLeft.runSpeed();//move left motor 
+    }
+  }
+}
+
 
 /* reduceAngle is a helper function that takes in an angle in radians
  *  and if it is larger than a full circle, it divides by 2*pi and returns the value.
