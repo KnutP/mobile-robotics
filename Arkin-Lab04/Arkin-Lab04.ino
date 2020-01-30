@@ -62,9 +62,6 @@ double dlEdt = 0;
 
 double lastMillis = 0;
 
-double leftLightPreviousReading = 0;
-double rightLightPreviousReading = 0;
-
 double degreesTraveled = 0;
 boolean lastWallRight = false;
 boolean lastWallLeft = false;
@@ -120,68 +117,66 @@ void setup()
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, LOW);
   delay(500);
-  
+
   Serial.begin(9600);
 
 }
 
-void loop(){
+void loop() {
 
 
-//Serial.print("Left: ");
-//Serial.print(lightRead(5));
-//Serial.print(" Right: ");
-//Serial.println(lightRead(4));
-//  homingMoving();
-wallFollow();
-//rightWallFollow();
-  
+  //Serial.print("Left: ");
+  //Serial.print(lightRead(5));
+  //Serial.print(" Right: ");
+  //Serial.println(lightRead(4));
+  wallFollow();
+
 }
 
 
 
 /*
- * wallFollow uses the behaviors from other functions to follow walls
- * on the left and right of the robot, follow a hallway, or randomly wander.
- * It switches between behaviors based on the sensor input to the robot.
- */
-void braitenberg(){
+   wallFollow uses the behaviors from other functions to follow walls
+   on the left and right of the robot, follow a hallway, or randomly wander.
+   It switches between behaviors based on the sensor input to the robot.
+*/
+void braitenberg() {
   updateState();
-  switch(state)
+  switch (state)
   {
-      case light: fear();
-          break;
-      case obstacle: shyKid();
-          break;
-      case wander: randomWander();
-          break;
+    case light: fear();
+      break;
+    case obstacle: shyKid();
+      break;
+    case wander: randomWander();
+      break;
   }
 
 }
 
 
 /*
- * wallFollow uses the behaviors from other functions to follow walls
- * on the left and right of the robot, follow a hallway, or randomly wander.
- * It switches between behaviors based on the sensor input to the robot.
- */
-void wallFollow(){
+   wallFollow uses the behaviors from other functions to follow walls
+   on the left and right of the robot, follow a hallway, or randomly wander.
+   It switches between behaviors based on the sensor input to the robot.
+*/
+void wallFollow() {
   updateWallState();
-  switch(wallState)
+  switch (wallState)
   {
-      case right: rightWallFollow(); 
-          break;
-      case left : leftWallFollow();
-          break;
-      case homing: lightHoming();
-          break;
+    case right: rightWallFollow();
+      break;
+    case left : leftWallFollow();
+      break;
+    case homing: lightHoming();
+      break;
   }
 
 }
 
 /*
- * updateState checks which sensors are currently triggered and updates the
- * state of the robot accordingly.
+   updateState checks which sensors are currently triggered and updates the
+   state of the robot accordingly.
 */
 void updateWallState() {
 
@@ -191,47 +186,56 @@ void updateWallState() {
   double lLightReading = lightRead(5);
   double rLightReading = lightRead(4);
 
-  if(lLightReading > 400 || rLightReading > 400){
+  if (lLightReading > 400 || rLightReading > 400) {
     wallState = homing;
-  } 
+  }
   else if (  rDist < 15 && lDist > 15 ) { // only left sensor triggered
     wallState = left;
   }
   else if ( rDist > 15 && lDist < 15 ) { // only right sensor triggered
     wallState = right;
   }
-  
+
 }
 
 
 /*
- * 
- */
-void lightHoming(){
+
+*/
+void lightHoming() {
 
   updateError();
 
-  double leftLightCurrentReading= lightRead(5);
-  double rightLightCurrentReading = lightRead(4);
+  double leftLightPrevious = 0;
+  double rightLightPrevious = 0;
+  double leftLight = lightRead(5);
+  double rightLight = lightRead(4);
 
-  if(lastWallRight && !lastWallLeft){
+  double stopThreshold = 270; // need to measure and tune
 
-    while(rightLightCurrentReading > rightLightPreviousReading){
+
+  if (lastWallRight && !lastWallLeft) { // if we were tracking the right wall before finding the light
+
+    while ( ((rightLight < stopThreshold) || (leftLight < stopThreshold)) && (abs(rightLight - leftLight) < 40) ) { // stop turning when both are above threshold and within 40 of each other
       goToAngle(-5);
       degreesTraveled -= 5;
-      leftLightPreviousReading = leftLightCurrentReading;
-      rightLightPreviousReading = rightLightCurrentReading;
+      leftLightPrevious = leftLight;
+      rightLightPrevious = rightLight;
+      leftLight = lightRead(5);
+      rightLight = lightRead(4);
     }
-
+    
   }
 
-  if(lastWallLeft && !lastWallRight){
+  if (lastWallLeft && !lastWallRight) { // if we were tracking the left wall before finding the light
 
-    while(leftLightCurrentReading > leftLightPreviousReading){
+    while ( ((rightLight < stopThreshold) || (leftLight < stopThreshold))  && (abs(rightLight - leftLight) < 40) ) { // stop turning when both are above threshold and within 40 of each other
       goToAngle(5);
       degreesTraveled += 5;
-      leftLightPreviousReading = leftLightCurrentReading;
-      rightLightPreviousReading = rightLightCurrentReading;
+      leftLightPrevious = leftLight;
+      rightLightPrevious = rightLight;
+      leftLight = lightRead(5);
+      rightLight = lightRead(4);
     }
     
   }
@@ -240,38 +244,38 @@ void lightHoming(){
   goToAngle(-180);
   delay(1000);
   aggressiveKid();
-  goToAngle(degreesTraveled);
+  goToAngle(degreesTraveled); //this may be a supplementary angle (180 - degreesTraveled)
   degreesTraveled = 0;
 
 }
 
 
-void aggressiveKid(){
+void aggressiveKid() {
   digitalWrite(redLED, LOW);
   digitalWrite(grnLED, LOW);
   digitalWrite(ylwLED, LOW);
 
   // if the front ir sensor sees something, stop
-  while(irRead(1)>6){
+  while (irRead(1) > 6) {
 
     double leftSpeed = motorSpeed;
     double rightSpeed = motorSpeed;
-  
+
     stepperRight.setSpeed(rightSpeed);//set right motor speed
     stepperLeft.setSpeed(leftSpeed);//set left motor speed
-  
+
     double beginMillis = millis();
-    while(millis()<beginMillis + 50){
+    while (millis() < beginMillis + 50) {
       stepperRight.runSpeed();//move right motor
-      stepperLeft.runSpeed();//move left motor 
+      stepperLeft.runSpeed();//move left motor
     }
   }
   stop();
 }
 
 /*
- * updateState checks which sensors are currently triggered and updates the
- * state of the robot accordingly.
+   updateState checks which sensors are currently triggered and updates the
+   state of the robot accordingly.
 */
 void updateState() {
 
@@ -281,7 +285,7 @@ void updateState() {
   double fDist = irRead(0);
   double lLight = lightRead(4);
   double rLight = lightRead(5);
-  
+
   if (rDist < 7 || lDist < 7 || bDist < 7 || fDist < 7) { // ir sensors see an obstacle
     lastMillis = millis();
     state = obstacle;
@@ -290,151 +294,151 @@ void updateState() {
     lastMillis = millis();
     state = light;
   }
-  else if (millis()-lastMillis > 1000) { // no sensors triggered
+  else if (millis() - lastMillis > 1000) { // no sensors triggered
     state = wander;
   }
-  
+
 }
 
 
 /* The love() Braitenberg behavior positively maps the two photoresistor readings
- * to the motor speeds on their respective sides of the robot.
- */
-void love(){
-  
+   to the motor speeds on their respective sides of the robot.
+*/
+void love() {
+
   digitalWrite(redLED, HIGH);
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, HIGH);
-  
+
   double kp = 1.2;
 
   // adjust speed based on the light values
-  double leftSpeed = motorSpeed + kp*lightRead(4);
-  double rightSpeed = motorSpeed + kp*lightRead(5);
+  double leftSpeed = motorSpeed + kp * lightRead(4);
+  double rightSpeed = motorSpeed + kp * lightRead(5);
 
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
   double beginMillis = millis();
-  while(millis()<beginMillis + 50){
+  while (millis() < beginMillis + 50) {
     stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
+    stepperLeft.runSpeed();//move left motor
   }
-  
+
 }
 
 /* The love() Braitenberg behavior positively maps the two photoresistor readings
- * to the motor speeds on their respective sides of the robot.
- */
-void fear(){
-  
+   to the motor speeds on their respective sides of the robot.
+*/
+void fear() {
+
   digitalWrite(redLED, HIGH);
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, HIGH);
-  
+
   double kp = 2;
 
   // adjust speed based on the light values
-  double leftSpeed = -kp*lightRead(4);
-  double rightSpeed = -kp*lightRead(5);
+  double leftSpeed = -kp * lightRead(4);
+  double rightSpeed = -kp * lightRead(5);
 
 
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
   double beginMillis = millis();
-  while(millis()<beginMillis + 50){
+  while (millis() < beginMillis + 50) {
     stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
+    stepperLeft.runSpeed();//move left motor
   }
-  
+
 }
 
 /* The love() Braitenberg behavior positively maps the two photoresistor readings
- * to the motor speeds on their respective sides of the robot.
- */
-void explorer(){
-  
+   to the motor speeds on their respective sides of the robot.
+*/
+void explorer() {
+
   digitalWrite(redLED, HIGH);
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, HIGH);
-  
+
   double kp = 1.2;
 
   // adjust speed based on the light values
-  double leftSpeed = motorSpeed + kp*lightRead(5);
-  double rightSpeed = motorSpeed + kp*lightRead(4);
+  double leftSpeed = motorSpeed + kp * lightRead(5);
+  double rightSpeed = motorSpeed + kp * lightRead(4);
 
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
   double beginMillis = millis();
-  while(millis()<beginMillis + 50){
+  while (millis() < beginMillis + 50) {
     stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
+    stepperLeft.runSpeed();//move left motor
   }
-  
+
 }
 
 /* The aggressive() Braitenberg behavior positively maps the two photoresistor readings
- * to the motor speeds on their respective sides of the robot.
- */
-void aggression(){
-  
+   to the motor speeds on their respective sides of the robot.
+*/
+void aggression() {
+
   digitalWrite(redLED, HIGH);
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, HIGH);
-  
+
   double kp = 2;
 
   // adjust speed based on the light values
-  double leftSpeed = -kp*lightRead(5);
-  double rightSpeed = -kp*lightRead(4);
+  double leftSpeed = -kp * lightRead(5);
+  double rightSpeed = -kp * lightRead(4);
 
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
   double beginMillis = millis();
-  while(millis()<beginMillis + 50){
+  while (millis() < beginMillis + 50) {
     stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
+    stepperLeft.runSpeed();//move left motor
   }
-  
+
 }
 
 
-/* lightRead() is a helper function that reads the photoresistor sensor value 
- *  at the given pin, scales it, and returns the value.
- */
-double lightRead(int pin){
+/* lightRead() is a helper function that reads the photoresistor sensor value
+    at the given pin, scales it, and returns the value.
+*/
+double lightRead(int pin) {
   int value = 0;
-  for (int i=0; i <30; i++){
+  for (int i = 0; i < 30; i++) {
     value = value + analogRead(pin);
   }
-  value = value/30;
+  value = value / 30;
 
-  if(pin == 4){ 
+  if (pin == 4) {
     return value; // left sensor
-  } else if(pin == 5){
+  } else if (pin == 5) {
     return value; // right sensor
-  } else{
+  } else {
     return 0;
   }
 
 }
 
 
-/* 
- *  Follow a wall on the right side of the robot using PD control
- */
-void rightWallFollow(){
+/*
+    Follow a wall on the right side of the robot using PD control
+*/
+void rightWallFollow() {
   lastWallRight = true;
   lastWallLeft = false;
 
   digitalWrite(redLED, HIGH);
   digitalWrite(grnLED, LOW);
   digitalWrite(ylwLED, HIGH);
-  
+
   updateError();
 
   double kp = 30;
@@ -442,41 +446,41 @@ void rightWallFollow(){
 
   // if we lose the wall, turn toward where it was
   double speedDifferential = 1;
-  if(irRead(3) > 8){
+  if (irRead(3) > 8) {
     speedDifferential = 0;
   }
 
   // if we see a wall in front, turn to avoid it
-  if(irRead(1) < 4){
+  if (irRead(1) < 4) {
     goToAngle(90);
   }
 
   // adjust speed based on distance between robot and wall
-  double rightSpeed = (motorSpeed + kp*lError + kd*dlEdt);
-  double leftSpeed = speedDifferential*motorSpeed;
-  
+  double rightSpeed = (motorSpeed + kp * lError + kd * dlEdt);
+  double leftSpeed = speedDifferential * motorSpeed;
+
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
   double beginMillis = millis();
-  while(millis()<beginMillis + 50){
+  while (millis() < beginMillis + 50) {
     stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
+    stepperLeft.runSpeed();//move left motor
   }
 }
 
 
-/* 
- *  Follow a wall on the left side of the robot using PD control
- */
-void leftWallFollow(){
+/*
+    Follow a wall on the left side of the robot using PD control
+*/
+void leftWallFollow() {
   lastWallRight = false;
   lastWallLeft = true;
 
   digitalWrite(redLED, LOW);
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, HIGH);
-  
+
   updateError();
 
   double kp = 30;
@@ -484,39 +488,39 @@ void leftWallFollow(){
 
   double speedDifferential = 1;
   // if we lose the wall, turn toward where it was
-  if(irRead(2) > 8){
+  if (irRead(2) > 8) {
     speedDifferential = 0;
   }
 
   // if we see a wall in front, turn to avoid it
-  if(irRead(1) < 4){
+  if (irRead(1) < 4) {
     goToAngle(-90);
   }
 
   // adjust speed based on distance between robot and wall
-  double leftSpeed = (motorSpeed + kp*rError + kd*drEdt);
-  double rightSpeed = motorSpeed*speedDifferential;
+  double leftSpeed = (motorSpeed + kp * rError + kd * drEdt);
+  double rightSpeed = motorSpeed * speedDifferential;
 
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
   double beginMillis = millis();
-  while(millis()<beginMillis + 50){
+  while (millis() < beginMillis + 50) {
     stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
+    stepperLeft.runSpeed();//move left motor
   }
 }
 
 
-/* 
- *  Keep the robot centered between two walls using PD control
- */
-void centerWallFollow(){
+/*
+    Keep the robot centered between two walls using PD control
+*/
+void centerWallFollow() {
 
   digitalWrite(redLED, HIGH);
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, HIGH);
-  
+
   updateError();
 
   double leftSpeed = 0;
@@ -528,24 +532,24 @@ void centerWallFollow(){
   double kd = 10.0;
 
 
-  if(deltaError>0){
-      // adjust speed based on distance between robot and wall
-      leftSpeed = (motorSpeed - kp*deltaError - kd*deltadEdt);
-      rightSpeed = motorSpeed;
+  if (deltaError > 0) {
+    // adjust speed based on distance between robot and wall
+    leftSpeed = (motorSpeed - kp * deltaError - kd * deltadEdt);
+    rightSpeed = motorSpeed;
 
     // if we see a wall in front, turn to avoid it
-    if(irRead(1) < 4){
-        goToAngle(-90);
+    if (irRead(1) < 4) {
+      goToAngle(-90);
     }
   }
-  else{
+  else {
     // adjust speed based on distance between robot and wall
-    rightSpeed = (motorSpeed + kp*deltaError + kd*deltadEdt);
+    rightSpeed = (motorSpeed + kp * deltaError + kd * deltadEdt);
     leftSpeed = motorSpeed;
 
     // if we see a wall in front, turn to avoid it
-    if(irRead(1) < 4){
-        goToAngle(90);
+    if (irRead(1) < 4) {
+      goToAngle(90);
     }
   }
 
@@ -555,61 +559,61 @@ void centerWallFollow(){
 
   // run the motors for a small timestep
   double beginMillis = millis();
-  while(millis()<beginMillis + 50){
+  while (millis() < beginMillis + 50) {
     stepperRight.runSpeed();
-    stepperLeft.runSpeed(); 
+    stepperLeft.runSpeed();
   }
-  
+
 }
 
 /* collide is the behavior to avoid obstacles in front of the robot
- */
-void collide(){
-  // if we see an obstacle in front, then turn to avoid it  
-  if(irRead(1) < 4){
+*/
+void collide() {
+  // if we see an obstacle in front, then turn to avoid it
+  if (irRead(1) < 4) {
     goToAngle(90);
   }
 }
 
 /* updateError is a helper function that reads the left and right
- * ir sensors and calculates the error on the left and right sides of the robot.
- * It also calls the updateDerivatives helper function to update the error derivatives.
- */
-void updateError(){
+   ir sensors and calculates the error on the left and right sides of the robot.
+   It also calls the updateDerivatives helper function to update the error derivatives.
+*/
+void updateError() {
 
   double rDist = irRead(2);
   double lDist = irRead(3);
 
- 
-  if(rDist>6){
-    rError = 6-rDist;
+
+  if (rDist > 6) {
+    rError = 6 - rDist;
   }
-  else if(rDist<6){
-    rError = 6-rDist;
+  else if (rDist < 6) {
+    rError = 6 - rDist;
   }
 
-  if(lDist>6){
-    lError = 6-lDist;
+  if (lDist > 6) {
+    lError = 6 - lDist;
   }
-  else if(lDist<6){
-    lError = 6-lDist;
+  else if (lDist < 6) {
+    lError = 6 - lDist;
   }
 
   updateDerivatives();
-  
+
 }
 
 /* updateDerivatives is a helper function that calculates
- *  the change in error over the change in time
- *  for the left and right sides of the robot since the
- *  last time the function was called.
- */
-double updateDerivatives(){
+    the change in error over the change in time
+    for the left and right sides of the robot since the
+    last time the function was called.
+*/
+double updateDerivatives() {
   currentTime = millis();
 
-  drEdt = (rError-rPrevError)/(currentTime - lastTime);
-  dlEdt = (lError-lPrevError)/(currentTime - lastTime);
-  
+  drEdt = (rError - rPrevError) / (currentTime - lastTime);
+  dlEdt = (lError - lPrevError) / (currentTime - lastTime);
+
   rPrevError = rError;
   lPrevError = lError;
   lastTime = currentTime;
@@ -618,24 +622,24 @@ double updateDerivatives(){
 
 
 /* irRead is a helper function that reads the irSensor value at the given pin,
- *  converts the distance to inches, and returns the value.
- */
-double irRead(int pin){
+    converts the distance to inches, and returns the value.
+*/
+double irRead(int pin) {
   int value = 0;
-  for (int i=0; i <30; i++){
+  for (int i = 0; i < 30; i++) {
     value = value + analogRead(pin);
   }
-  value = value/30;
+  value = value / 30;
 
-  if(pin == 0){
-    return 8452.3*pow(value,-1.235); // front sensor
-  } else if(pin == 1){
-    return 8916.1*pow(value, -1.274); // back sensor
-  } else if(pin == 3){
-    return 9992.4*pow(value, -1.29); // left sensor
-  } else if(pin == 2){
-    return 10910*pow(value, -1.311); // right sensor
-  } else{
+  if (pin == 0) {
+    return 8452.3 * pow(value, -1.235); // front sensor
+  } else if (pin == 1) {
+    return 8916.1 * pow(value, -1.274); // back sensor
+  } else if (pin == 3) {
+    return 9992.4 * pow(value, -1.29); // left sensor
+  } else if (pin == 2) {
+    return 10910 * pow(value, -1.311); // right sensor
+  } else {
     return 0;
   }
 
@@ -643,33 +647,33 @@ double irRead(int pin){
 
 
 /* randomWander randomly decides to either drive or turn, then executes the
- *  manuever using a random value.
- */
-void randomWander(){
+    manuever using a random value.
+*/
+void randomWander() {
   digitalWrite(redLED, LOW);
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, LOW);
 
-  if (random(0,10) > 5){
-        // drive a random distance
-        delay(500);
-        forward(random(-6,6));
-    }
-    else {
-      // turn to a random angle
-      delay(500);
-      pivot(random(-90, 90));
-    }
+  if (random(0, 10) > 5) {
+    // drive a random distance
+    delay(500);
+    forward(random(-6, 6));
+  }
+  else {
+    // turn to a random angle
+    delay(500);
+    pivot(random(-90, 90));
+  }
 }
 
 
-void shyKid(){
+void shyKid() {
   // if no objects within 15 inches, do nothing
-  if(irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15){
+  if (irRead(0) > 15 && irRead(1) > 15 && irRead(2) > 15 && irRead(3) > 15) {
     digitalWrite(redLED, LOW);
     digitalWrite(grnLED, LOW);
     digitalWrite(ylwLED, LOW);
-  }else{
+  } else {
     digitalWrite(redLED, HIGH);
     digitalWrite(grnLED, LOW);
     digitalWrite(ylwLED, LOW);
@@ -684,47 +688,47 @@ void shyKid(){
     double rightSpeed = 0;
 
     // if objects on both front and back, spin 90 degrees and move away
-    if(fDist < 12 && bDist < 12 && lDist > 12 && rDist > 12){
+    if (fDist < 12 && bDist < 12 && lDist > 12 && rDist > 12) {
       spin(90);
       forward(12);
     }
-    
+
     // if no objects within 12 inches, do nothing
-    else if(fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12){
+    else if (fDist < 12 && bDist < 12 && lDist < 12 && rDist < 12) {
       double leftSpeed = 0;
       double rightSpeed = 0;
     }
-    
+
     // if an object is behind, add the side force vectors
-    else if(bDist<12){
-      leftSpeed = 3000*(-1/fDist + 1/lDist + 1/bDist);
-      rightSpeed = 3000*(-1/fDist + 1/rDist + 1/bDist);
+    else if (bDist < 12) {
+      leftSpeed = 3000 * (-1 / fDist + 1 / lDist + 1 / bDist);
+      rightSpeed = 3000 * (-1 / fDist + 1 / rDist + 1 / bDist);
     }
-    
+
     // default to subtracting the side force vectos
-    else{
-      leftSpeed = 3000*(-1/fDist - 1/lDist + 1/bDist);
-      rightSpeed = 3000*(-1/fDist - 1/rDist + 1/bDist);
+    else {
+      leftSpeed = 3000 * (-1 / fDist - 1 / lDist + 1 / bDist);
+      rightSpeed = 3000 * (-1 / fDist - 1 / rDist + 1 / bDist);
     }
-   
+
     stepperRight.setSpeed(rightSpeed);//set right motor speed
     stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
     double beginMillis = millis();
-    while(millis()<beginMillis + 50){
+    while (millis() < beginMillis + 50) {
       stepperRight.runSpeed();//move right motor
-      stepperLeft.runSpeed();//move left motor 
+      stepperLeft.runSpeed();//move left motor
     }
   }
 }
 
 
 /* reduceAngle is a helper function that takes in an angle in radians
- *  and if it is larger than a full circle, it divides by 2*pi and returns the value.
- */
-double reduceAngle(double angle){
-  if(angle > 2*3.14159265358){
-    return angle/(2*3.14159265358);
+    and if it is larger than a full circle, it divides by 2*pi and returns the value.
+*/
+double reduceAngle(double angle) {
+  if (angle > 2 * 3.14159265358) {
+    return angle / (2 * 3.14159265358);
   } else {
     return angle;
   }
@@ -774,7 +778,7 @@ void runAtSpeed ( void ) {
 void pivot(int angle) {
 
   double ticksPerDegree = 11.32; // Measured the number of ticks in 90 degrees, then divided to find the constant
-  int ticksToDrive = (int)(abs(angle)*ticksPerDegree);
+  int ticksToDrive = (int)(abs(angle) * ticksPerDegree);
 
   digitalWrite(redLED, LOW);//turn off red LED
   digitalWrite(grnLED, HIGH);//turn on green LED
@@ -783,18 +787,18 @@ void pivot(int angle) {
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
 
-  if(angle > 0){
+  if (angle > 0) {
     stepperRight.moveTo(ticksToDrive);//set distance to move
     stepperRight.setSpeed(1000);//set right motor speed
     stepperRight.runSpeedToPosition();//move right motor
     runToStop();//run until the robot reaches the target
-  }else{    
+  } else {
     stepperLeft.moveTo(ticksToDrive);//set distance to move
     stepperLeft.setSpeed(1000);//set left motor speed
     stepperLeft.runSpeedToPosition();//move left motor
     runToStop();//run until the robot reaches the target
   }
-  
+
 }
 
 /*
@@ -804,12 +808,12 @@ void pivot(int angle) {
 void spin(int angle) {
 
   double ticksPerDegree = 5.75;
-  int ticksToDrive = (int)(angle*ticksPerDegree);
+  int ticksToDrive = (int)(angle * ticksPerDegree);
 
   digitalWrite(redLED, LOW);//turn off red LED
   digitalWrite(grnLED, HIGH);//turn on green LED
   digitalWrite(ylwLED, LOW);//turn off yellow LED
-  
+
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
   stepperRight.moveTo(ticksToDrive);//set distance for right wheel to move
@@ -819,7 +823,7 @@ void spin(int angle) {
   stepperRight.runSpeedToPosition();//move right motor
   stepperLeft.runSpeedToPosition();//move left motor
   runToStop();//run until the robot reaches the target
-  
+
 }
 
 /*
@@ -828,17 +832,17 @@ void spin(int angle) {
   and the inner wheel drives at the slower speed, resulting in a turn.
 */
 void turn(double leftSpeed, double rightSpeed, int leftPulses, int rightPulses) {
-    stepperLeft.setCurrentPosition(0);//set left wheel position to zero
-    stepperRight.setCurrentPosition(0);//set right wheel position to zero
-    long positions[2];
-    positions[0] = leftPulses;
-    positions[1] = rightPulses;
-    stepperLeft.setSpeed(leftSpeed);
-    stepperRight.setSpeed(rightSpeed);
-    stepperLeft.setMaxSpeed(leftSpeed);
-    stepperRight.setMaxSpeed(rightSpeed);
-    steppers.moveTo(positions);
-    steppers.runSpeedToPosition();
+  stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+  stepperRight.setCurrentPosition(0);//set right wheel position to zero
+  long positions[2];
+  positions[0] = leftPulses;
+  positions[1] = rightPulses;
+  stepperLeft.setSpeed(leftSpeed);
+  stepperRight.setSpeed(rightSpeed);
+  stepperLeft.setMaxSpeed(leftSpeed);
+  stepperRight.setMaxSpeed(rightSpeed);
+  steppers.moveTo(positions);
+  steppers.runSpeedToPosition();
 
 }
 /*
@@ -847,11 +851,11 @@ void turn(double leftSpeed, double rightSpeed, int leftPulses, int rightPulses) 
 */
 void forward(int distance) {
   int ticksPerInch = 76;
-  int ticksToDrive = distance*ticksPerInch;
-  
-//  digitalWrite(redLED, LOW);//turn off red LED
-//  digitalWrite(grnLED, HIGH);//turn on green LED
-//  digitalWrite(ylwLED, LOW);//turn off yellow LED
+  int ticksToDrive = distance * ticksPerInch;
+
+  //  digitalWrite(redLED, LOW);//turn off red LED
+  //  digitalWrite(grnLED, HIGH);//turn on green LED
+  //  digitalWrite(ylwLED, LOW);//turn off yellow LED
 
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
@@ -862,7 +866,7 @@ void forward(int distance) {
   stepperRight.runSpeedToPosition();//move right motor
   stepperLeft.runSpeedToPosition();//move left motor
   runToStop();//run until the robot reaches the target
-  
+
 }
 /*
   The reverse function takes in a distance to drive in inches,
@@ -885,11 +889,11 @@ void stop() {
   then spins the robot to that angle.
 */
 void goToAngle(int angle) {
-  
-  double ticksPerDegree = 5.62;
-  int ticksToDrive = (int)(angle*ticksPerDegree);
 
-//  digitalWrite(grnLED, HIGH);//turn on green LED
+  double ticksPerDegree = 5.62;
+  int ticksToDrive = (int)(angle * ticksPerDegree);
+
+  //  digitalWrite(grnLED, HIGH);//turn on green LED
 
   stepperLeft.setCurrentPosition(0);//set left wheel position to zero
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
@@ -901,7 +905,7 @@ void goToAngle(int angle) {
   stepperRight.runSpeedToPosition();//move right motor
   stepperLeft.runSpeedToPosition();//move left motor
   runToStop();//run until the robot reaches the target
-  
+
 }
 
 /*
@@ -913,11 +917,11 @@ void goToGoal(int x, int y) {
   digitalWrite(redLED, LOW);//turn off red LED
   digitalWrite(grnLED, LOW);//turn off green LED
   digitalWrite(ylwLED, HIGH);//turn on yellow LED
-  
-  double thetaD = atan2(y,x); // calculates angle from desired coordinates
-  goToAngle(thetaD*180/3.14159265358); // turns to the angle
-  
-  int distance = sqrt((x*x)+(y*y)); // calculate distance from desired coordinates
+
+  double thetaD = atan2(y, x); // calculates angle from desired coordinates
+  goToAngle(thetaD * 180 / 3.14159265358); // turns to the angle
+
+  int distance = sqrt((x * x) + (y * y)); // calculate distance from desired coordinates
   forward(distance); // drives distance
- 
+
 }
