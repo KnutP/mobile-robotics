@@ -173,7 +173,7 @@ void wallFollow(){
           break;
       case left : leftWallFollow();
           break;
-      case homing: homingMoving();
+      case homing: lightHoming();
           break;
   }
 
@@ -207,7 +207,7 @@ void updateWallState() {
 /*
  * 
  */
-void homingMoving(){
+void lightHoming(){
 
   updateError();
 
@@ -236,42 +236,12 @@ void homingMoving(){
     
   }
 
-  
-
-
   aggressiveKid();
   goToAngle(-180);
   delay(1000);
   aggressiveKid();
   goToAngle(degreesTraveled);
   degreesTraveled = 0;
-  
-
-//  if((leftLightCurrentReading > 500 && rightLightCurrentReading < 500) || (leftLightCurrentReading < 500 && rightLightCurrentReading > 500)){
-//    forward(-1);
-//  }
-//
-//  
-//  if((degreesTraveled > 70 || degreesTraveled < -70) && (leftLightCurrentReading > 550 || rightLightCurrentReading > 550)){
-//    aggressiveKid();
-//    goToAngle(-180);
-//    delay(1000);
-//    aggressiveKid();
-//    goToAngle(degreesTraveled);
-//    degreesTraveled = 0;
-//    goForward = false;
-//  }
-//  
-//  if(leftLightCurrentReading > 140 /*leftLightPreviousReading*/){
-//    goToAngle(5);
-//    degreesTraveled += 5;
-//    goForward = false;
-//  }
-//  else if(rightLightCurrentReading > 140 /* rightLightPreviousReading*/){
-//    goToAngle(-5);
-//    degreesTraveled -= 5;
-//    goForward = false;
-//  }
 
 }
 
@@ -283,14 +253,6 @@ void aggressiveKid(){
 
   // if the front ir sensor sees something, stop
   while(irRead(1)>6){
-
-    Serial.println("move");
-//    stepperRight.run();//move one full rotation forward relative to current position
-//    stepperLeft.run();//move one full rotation forward relative to current position
-//    stepperRight.setSpeed(-1000);//set right motor speed
-//    stepperLeft.setSpeed(-1000);//set left motor speed
-//    stepperRight.runSpeed();//move right motor
-//    stepperLeft.runSpeed();//move left motor
 
     double leftSpeed = motorSpeed;
     double rightSpeed = motorSpeed;
