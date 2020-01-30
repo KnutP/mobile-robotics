@@ -41,9 +41,12 @@ MultiStepper steppers;//create instance to control multiple steppers at the same
 
 #define pauseTime 2500 //time before robot moves
 
-double motorSpeed = -800;
+double motorSpeed = -400;
 enum State { light, obstacle, wander};
 State state = wander;
+
+enum WallState { right, left, homing};
+WallState wallState = left;
 
 double lError = 0;
 double rError = 0;
@@ -58,6 +61,15 @@ double drEdt = 0;
 double dlEdt = 0;
 
 double lastMillis = 0;
+
+double leftLightPreviousReading = 0;
+double rightLightPreviousReading = 0;
+
+double degreesTraveled = 0;
+boolean lastWallRight = false;
+boolean lastWallLeft = false;
+
+
 
 void setup()
 {
@@ -115,8 +127,14 @@ void setup()
 
 void loop(){
 
-//  aggression();
-  braitenberg();
+
+//Serial.print("Left: ");
+//Serial.print(lightRead(5));
+//Serial.print(" Right: ");
+//Serial.println(lightRead(4));
+//  homingMoving();
+wallFollow();
+//rightWallFollow();
   
 }
 
@@ -131,7 +149,7 @@ void braitenberg(){
   updateState();
   switch(state)
   {
-      case light: aggression();
+      case light: fear();
           break;
       case obstacle: shyKid();
           break;
@@ -141,6 +159,153 @@ void braitenberg(){
 
 }
 
+
+/*
+ * wallFollow uses the behaviors from other functions to follow walls
+ * on the left and right of the robot, follow a hallway, or randomly wander.
+ * It switches between behaviors based on the sensor input to the robot.
+ */
+void wallFollow(){
+  updateWallState();
+  switch(wallState)
+  {
+      case right: rightWallFollow(); 
+          break;
+      case left : leftWallFollow();
+          break;
+      case homing: homingMoving();
+          break;
+  }
+
+}
+
+/*
+ * updateState checks which sensors are currently triggered and updates the
+ * state of the robot accordingly.
+*/
+void updateWallState() {
+
+  double rDist = irRead(2);
+  double lDist = irRead(3);
+  double bDist = irRead(1);
+  double lLightReading = lightRead(5);
+  double rLightReading = lightRead(4);
+
+  if(lLightReading > 400 || rLightReading > 400){
+    wallState = homing;
+  } 
+  else if (  rDist < 15 && lDist > 15 ) { // only left sensor triggered
+    wallState = left;
+  }
+  else if ( rDist > 15 && lDist < 15 ) { // only right sensor triggered
+    wallState = right;
+  }
+  
+}
+
+
+/*
+ * 
+ */
+void homingMoving(){
+
+  updateError();
+
+  double leftLightCurrentReading= lightRead(5);
+  double rightLightCurrentReading = lightRead(4);
+
+  if(lastWallRight && !lastWallLeft){
+
+    while(rightLightCurrentReading > rightLightPreviousReading){
+      goToAngle(-5);
+      degreesTraveled -= 5;
+      leftLightPreviousReading = leftLightCurrentReading;
+      rightLightPreviousReading = rightLightCurrentReading;
+    }
+
+  }
+
+  if(lastWallLeft && !lastWallRight){
+
+    while(leftLightCurrentReading > leftLightPreviousReading){
+      goToAngle(5);
+      degreesTraveled += 5;
+      leftLightPreviousReading = leftLightCurrentReading;
+      rightLightPreviousReading = rightLightCurrentReading;
+    }
+    
+  }
+
+  
+
+
+  aggressiveKid();
+  goToAngle(-180);
+  delay(1000);
+  aggressiveKid();
+  goToAngle(degreesTraveled);
+  degreesTraveled = 0;
+  
+
+//  if((leftLightCurrentReading > 500 && rightLightCurrentReading < 500) || (leftLightCurrentReading < 500 && rightLightCurrentReading > 500)){
+//    forward(-1);
+//  }
+//
+//  
+//  if((degreesTraveled > 70 || degreesTraveled < -70) && (leftLightCurrentReading > 550 || rightLightCurrentReading > 550)){
+//    aggressiveKid();
+//    goToAngle(-180);
+//    delay(1000);
+//    aggressiveKid();
+//    goToAngle(degreesTraveled);
+//    degreesTraveled = 0;
+//    goForward = false;
+//  }
+//  
+//  if(leftLightCurrentReading > 140 /*leftLightPreviousReading*/){
+//    goToAngle(5);
+//    degreesTraveled += 5;
+//    goForward = false;
+//  }
+//  else if(rightLightCurrentReading > 140 /* rightLightPreviousReading*/){
+//    goToAngle(-5);
+//    degreesTraveled -= 5;
+//    goForward = false;
+//  }
+
+}
+
+
+void aggressiveKid(){
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, LOW);
+
+  // if the front ir sensor sees something, stop
+  while(irRead(1)>6){
+
+    Serial.println("move");
+//    stepperRight.run();//move one full rotation forward relative to current position
+//    stepperLeft.run();//move one full rotation forward relative to current position
+//    stepperRight.setSpeed(-1000);//set right motor speed
+//    stepperLeft.setSpeed(-1000);//set left motor speed
+//    stepperRight.runSpeed();//move right motor
+//    stepperLeft.runSpeed();//move left motor
+
+    double leftSpeed = motorSpeed;
+    double rightSpeed = motorSpeed;
+  
+    stepperRight.setSpeed(rightSpeed);//set right motor speed
+    stepperLeft.setSpeed(leftSpeed);//set left motor speed
+  
+    double beginMillis = millis();
+    while(millis()<beginMillis + 50){
+      stepperRight.runSpeed();//move right motor
+      stepperLeft.runSpeed();//move left motor 
+    }
+  }
+  stop();
+}
 
 /*
  * updateState checks which sensors are currently triggered and updates the
@@ -155,7 +320,7 @@ void updateState() {
   double lLight = lightRead(4);
   double rLight = lightRead(5);
   
-  if (rDist < 6 || lDist < 6 || bDist < 6 || fDist < 6) { // ir sensors see an obstacle
+  if (rDist < 7 || lDist < 7 || bDist < 7 || fDist < 7) { // ir sensors see an obstacle
     lastMillis = millis();
     state = obstacle;
   }
@@ -301,6 +466,8 @@ double lightRead(int pin){
  *  Follow a wall on the right side of the robot using PD control
  */
 void rightWallFollow(){
+  lastWallRight = true;
+  lastWallLeft = false;
 
   digitalWrite(redLED, HIGH);
   digitalWrite(grnLED, LOW);
@@ -341,6 +508,8 @@ void rightWallFollow(){
  *  Follow a wall on the left side of the robot using PD control
  */
 void leftWallFollow(){
+  lastWallRight = false;
+  lastWallLeft = true;
 
   digitalWrite(redLED, LOW);
   digitalWrite(grnLED, HIGH);
@@ -449,6 +618,7 @@ void updateError(){
   double rDist = irRead(2);
   double lDist = irRead(3);
 
+ 
   if(rDist>6){
     rError = 6-rDist;
   }
@@ -538,9 +708,9 @@ void shyKid(){
     digitalWrite(grnLED, LOW);
     digitalWrite(ylwLED, LOW);
   }else{
-    digitalWrite(redLED, LOW);
+    digitalWrite(redLED, HIGH);
     digitalWrite(grnLED, LOW);
-    digitalWrite(ylwLED, HIGH);
+    digitalWrite(ylwLED, LOW);
 
     // read the 4 ir sensors
     double fDist = irRead(0);
