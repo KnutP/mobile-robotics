@@ -125,10 +125,10 @@ void setup()
 void loop() {
 
 
-  //Serial.print("Left: ");
-  //Serial.print(lightRead(5));
-  //Serial.print(" Right: ");
-  //Serial.println(lightRead(4));
+//  Serial.print("Left: ");
+//  Serial.print(lightRead(5));
+//  Serial.print(" Right: ");
+//  Serial.println(lightRead(4));
   wallFollow();
 
 }
@@ -186,7 +186,7 @@ void updateWallState() {
   double lLightReading = lightRead(5);
   double rLightReading = lightRead(4);
 
-  if (lLightReading > 400 || rLightReading > 400) {
+  if (lLightReading > 150 || rLightReading > 150) {
     wallState = homing;
   }
   else if (  rDist < 15 && lDist > 15 ) { // only left sensor triggered
@@ -211,14 +211,16 @@ void lightHoming() {
   double leftLight = lightRead(5);
   double rightLight = lightRead(4);
 
-  double stopThreshold = 270; // need to measure and tune
+  double stopThreshold = 260; // need to measure and tune
 
 
   if (lastWallRight && !lastWallLeft) { // if we were tracking the right wall before finding the light
 
+    forward(-6);
+
     while ( ((rightLight < stopThreshold) || (leftLight < stopThreshold)) && (abs(rightLight - leftLight) < 40) ) { // stop turning when both are above threshold and within 40 of each other
-      goToAngle(-5);
-      degreesTraveled -= 5;
+      goToAngle(5);
+      degreesTraveled += 5;
       leftLightPrevious = leftLight;
       rightLightPrevious = rightLight;
       leftLight = lightRead(5);
@@ -229,9 +231,11 @@ void lightHoming() {
 
   if (lastWallLeft && !lastWallRight) { // if we were tracking the left wall before finding the light
 
+    forward(-6);
+
     while ( ((rightLight < stopThreshold) || (leftLight < stopThreshold))  && (abs(rightLight - leftLight) < 40) ) { // stop turning when both are above threshold and within 40 of each other
-      goToAngle(5);
-      degreesTraveled += 5;
+      goToAngle(-5);
+      degreesTraveled -= 5;
       leftLightPrevious = leftLight;
       rightLightPrevious = rightLight;
       leftLight = lightRead(5);
@@ -244,7 +248,7 @@ void lightHoming() {
   goToAngle(-180);
   delay(1000);
   aggressiveKid();
-  goToAngle(degreesTraveled); //this may be a supplementary angle (180 - degreesTraveled)
+  goToAngle(-degreesTraveled); //this may be a supplementary angle (180 - degreesTraveled)
   degreesTraveled = 0;
 
 }
@@ -861,8 +865,8 @@ void forward(int distance) {
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
   stepperRight.moveTo(ticksToDrive);//move one full rotation forward relative to current position
   stepperLeft.moveTo(ticksToDrive);//move one full rotation forward relative to current position
-  stepperRight.setSpeed(1000);//set right motor speed
-  stepperLeft.setSpeed(1000);//set left motor speed
+  stepperRight.setSpeed(400);//set right motor speed
+  stepperLeft.setSpeed(400);//set left motor speed
   stepperRight.runSpeedToPosition();//move right motor
   stepperLeft.runSpeedToPosition();//move left motor
   runToStop();//run until the robot reaches the target
