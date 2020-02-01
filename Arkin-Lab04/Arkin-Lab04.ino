@@ -123,12 +123,7 @@ void setup()
 }
 
 void loop() {
-
-
-//  Serial.print("Left: ");
-//  Serial.print(lightRead(5));
-//  Serial.print(" Right: ");
-//  Serial.println(lightRead(4));
+  
   wallFollow();
 
 }
@@ -136,9 +131,9 @@ void loop() {
 
 
 /*
-   wallFollow uses the behaviors from other functions to follow walls
-   on the left and right of the robot, follow a hallway, or randomly wander.
-   It switches between behaviors based on the sensor input to the robot.
+  braitenberg uses the behaviors from other functions to do one of 4 responses to light 
+  (love, fear, explore, or aggressive), random wander, and our obstacle avoidance behavior.
+  It switches between behaviors based on the sensor input to the robot.
 */
 void braitenberg() {
   updateState();
@@ -175,7 +170,7 @@ void wallFollow() {
 }
 
 /*
-   updateState checks which sensors are currently triggered and updates the
+   updateWallState checks which sensors are currently triggered and updates the
    state of the robot accordingly.
 */
 void updateWallState() {
@@ -200,10 +195,15 @@ void updateWallState() {
 
 
 /*
-
+    lightHoming finds where a light source is coming from, moves towards 
+    it, stops whithin a certain range, and returns back where it came from
 */
 void lightHoming() {
 
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, HIGH);
+  
   updateError();
 
   double leftLightPrevious = 0;
@@ -211,16 +211,17 @@ void lightHoming() {
   double leftLight = lightRead(5);
   double rightLight = lightRead(4);
 
-  double stopThreshold = 260; // need to measure and tune
+  double stopThresholdRight = 290; // need to measure and tune
+  double stopThresholdLeft = 220;
 
 
   if (lastWallRight && !lastWallLeft) { // if we were tracking the right wall before finding the light
 
     forward(-6);
 
-    while ( ((rightLight < stopThreshold) || (leftLight < stopThreshold)) && (abs(rightLight - leftLight) < 40) ) { // stop turning when both are above threshold and within 40 of each other
-      goToAngle(5);
-      degreesTraveled += 5;
+    while ( ((rightLight < stopThresholdRight) || (leftLight < stopThresholdLeft)) && (abs(rightLight - leftLight) < 40) ) { // stop turning when both are above threshold and within 40 of each other
+      goToAngle(15);
+      degreesTraveled += 15;
       leftLightPrevious = leftLight;
       rightLightPrevious = rightLight;
       leftLight = lightRead(5);
@@ -233,9 +234,9 @@ void lightHoming() {
 
     forward(-6);
 
-    while ( ((rightLight < stopThreshold) || (leftLight < stopThreshold))  && (abs(rightLight - leftLight) < 40) ) { // stop turning when both are above threshold and within 40 of each other
-      goToAngle(-5);
-      degreesTraveled -= 5;
+    while ( ((rightLight < stopThresholdRight) || (leftLight < stopThresholdLeft))  && (abs(rightLight - leftLight) < 40) ) { // stop turning when both are above threshold and within 40 of each other
+      goToAngle(-15);
+      degreesTraveled -= 15;
       leftLightPrevious = leftLight;
       rightLightPrevious = rightLight;
       leftLight = lightRead(5);
@@ -244,15 +245,23 @@ void lightHoming() {
     
   }
 
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, LOW);
+  
   aggressiveKid();
   goToAngle(-180);
   delay(1000);
   aggressiveKid();
-  goToAngle(-degreesTraveled); //this may be a supplementary angle (180 - degreesTraveled)
+  goToAngle(-degreesTraveled*2); //overcompensation blocks sensors from viewing the light again so that it can go back into wall following
   degreesTraveled = 0;
 
 }
 
+/*
+    aggressiveKid has the robot move until he is within
+    a certain range of an object, the stop
+*/
 
 void aggressiveKid() {
   digitalWrite(redLED, LOW);
@@ -331,8 +340,8 @@ void love() {
 
 }
 
-/* The love() Braitenberg behavior positively maps the two photoresistor readings
-   to the motor speeds on their respective sides of the robot.
+/* 
+ *  The fear() Braitenberg 
 */
 void fear() {
 
@@ -358,8 +367,8 @@ void fear() {
 
 }
 
-/* The love() Braitenberg behavior positively maps the two photoresistor readings
-   to the motor speeds on their respective sides of the robot.
+/* 
+ *  The explorer() Braitenberg behavior 
 */
 void explorer() {
 
@@ -384,8 +393,8 @@ void explorer() {
 
 }
 
-/* The aggressive() Braitenberg behavior positively maps the two photoresistor readings
-   to the motor speeds on their respective sides of the robot.
+/* 
+ *  The aggression() Braitenberg behavior 
 */
 void aggression() {
 
@@ -411,7 +420,8 @@ void aggression() {
 }
 
 
-/* lightRead() is a helper function that reads the photoresistor sensor value
+/* 
+ *  lightRead() is a helper function that reads the photoresistor sensor value
     at the given pin, scales it, and returns the value.
 */
 double lightRead(int pin) {
@@ -439,9 +449,9 @@ void rightWallFollow() {
   lastWallRight = true;
   lastWallLeft = false;
 
-  digitalWrite(redLED, HIGH);
-  digitalWrite(grnLED, LOW);
-  digitalWrite(ylwLED, HIGH);
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, LOW);
 
   updateError();
 
@@ -483,7 +493,7 @@ void leftWallFollow() {
 
   digitalWrite(redLED, LOW);
   digitalWrite(grnLED, HIGH);
-  digitalWrite(ylwLED, HIGH);
+  digitalWrite(ylwLED, LOW);
 
   updateError();
 
