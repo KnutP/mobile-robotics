@@ -23,8 +23,8 @@ void setup() {
   
   size(700, 600); //make our canvas 200 x 200 pixels big
   //  initialize your serial port and set the baud rate to 9600
-  //myPort = new Serial(this, Serial.list()[3], 9600);
-  //myPort.bufferUntil('\n'); 
+  myPort = new Serial(this, "COM7", 9600);
+  myPort.bufferUntil('\n'); 
   
    for(int i=0;i<6;i++) {
    for(int j=0;j<6;j++){
@@ -44,6 +44,13 @@ void draw() {
   text("Sensor Data", 100, 400);
   text("Commands", 400, 400);
   
+      if (mousePressed == true ) 
+    {             //if we clicked in the window
+      myPort.write('1');        //send a 1
+      println("1");
+      mousePressed = false;
+    }
+  
   
   
 }
@@ -60,7 +67,7 @@ void displayMap( PShape[][] map) {
   
 }
 
-
+/*
 void serialEvent( Serial myPort) {
 //put the incoming data into a String - 
 //the '\n' is our end delimiter indicating the end of a complete packet
@@ -95,3 +102,4 @@ if (val != null) {
     }
   }
 }
+*/
