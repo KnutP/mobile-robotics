@@ -55,13 +55,6 @@ uint8_t mapDat[4][4];                   //variable to hold receive data MAP
 uint8_t lastSend;                      // Store last send time
 
 
-// NEW STUFF
-
-char val; // Data received from the serial port
-int ledPin = 13; // Set the pin to digital I/O 13
-boolean ledState = LOW; //to toggle our LED
-
-
 
 void setup() {
   Serial.begin(baud_rate);//start serial communication
@@ -69,91 +62,43 @@ void setup() {
   radio.setChannel(team_channel);//set the transmit and receive channels to avoid interference
   if (transmit) {
     radio.openWritingPipe(pipe);//open up writing pipe
-    //radio.openWritingPipe(addresses[1]);//open reading pipe
-    //radio.openReadingPipe(1, addresses[0]);//open reading pipe
     Serial.println("***********************************");
     Serial.println("....Starting nRF24L01 Transmit.....");
     Serial.println("***********************************");
   } else {
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();;//start listening for data;
-    //radio.openReadingPipe(1, addresses[1]);//open up reading pipe
-    //radio.openWritingPipe(addresses[0]);//open writing pipe
     Serial.println("***********************************");
     Serial.println("....Starting nRF24L01 Receive.....");
     Serial.println("***********************************");
   }
 
-  // NEW STUFF
-  pinMode(ledPin, OUTPUT); // Set pin as OUTPUT
-  //initialize serial communications at a 9600 baud rate
-  //Serial.begin(9600);
-  //establishContact();  // send a byte to establish contact until receiver responds 
-  
 }
 
 void loop() {
   if (transmit) {
-    ////// Use this code to test sending with the serial port
     readSerial();
-    if (uno) {
       if (data[0] > 0) {
         Serial.println(data[0]);
         radio.write(data, sizeof(data));
         data[0] = 0;
       }
 
-//
-//      if (Serial.available() > 0) { // If data is available to read,
-//        val = Serial.read(); // read it and store it in val
-//    
-//        if(val == '1') //if we get a 1
-//        {
-//           ledState = !ledState; //flip the ledState
-//           digitalWrite(ledPin, ledState); 
-//        }
-//        delay(100);
-//      } 
-//      else {
-//        Serial.println("Hello, world!"); //send back a hello world
-//        delay(50);
-//      }
-
-
-    }
-    else {
-      //// Use this code to test sending from the robot
-      Serial.println("\t\trobot_data ");
-      for (int i = 0; i <= 3; i++) {
-          data[0] = i;
-          radio.write(data, sizeof(data));
-          Serial.print(data[0]);
-          Serial.print("\t");
-        }
-    }
-    //else {
-    // Serial.println("no transmit radio");
-    //}//no transmit radio
-  }//end of transmit if
+  }
   
   else if (!transmit) {
-    /// Use this code to receive from the laptop or the robot
     while (radio.available()) {
-      //radio.read(&data, sizeof(data));
-      //Serial.println(data[0]);//print the data stream
       radio.read(&incoming, 1);
-      
-//      Serial.println(incoming[0]);
       
       if (incoming[0] > 0) {
         Serial.println(incoming[0]);
       }
-    }//end while
+    }
 
     
   }
   delay(100);//wait so the data is readable
-}//end of loop
+}
 
 void readSerial() {
   if (Serial.available() > 0) {

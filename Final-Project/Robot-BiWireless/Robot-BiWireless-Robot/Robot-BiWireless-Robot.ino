@@ -34,6 +34,11 @@
 #include <SPI.h>//include serial peripheral interface library
 #include <RF24.h>//include wireless transceiver library
 #include <nRF24L01.h>//include wireless transceiver library
+#include <AccelStepper.h>//include the stepper motor library
+#include <MultiStepper.h>//include multiple stepper motor library
+#include <NewPing.h> //include sonar library
+#include <TimerOne.h>//include timer interrupt library
+#include <math.h>
 
 // Set up the wireless transceiver pins
 #define CE_PIN  7
@@ -54,26 +59,22 @@ uint8_t state[] = {0, 0};               //variable to hold receive data position
 uint8_t mapDat[4][4];                   //variable to hold receive data MAP
 uint8_t lastSend;                      // Store last send time
 
-double outgoingIRData[1];
+uint8_t outgoingIRData[1];
 
 
-// NEW STUFF
+// NEW STUFF, erase once we actually have stuff to send to robot
 
 char val; // Data received from the serial port
 int ledPin = 13; // Set the pin to digital I/O 13
 boolean ledState = LOW; //to toggle our LED
 
 
-#include <AccelStepper.h>//include the stepper motor library
-#include <MultiStepper.h>//include multiple stepper motor library
-#include <NewPing.h> //include sonar library
-#include <TimerOne.h>//include timer interrupt library
-#include <math.h>
+
 
 //define pin numbers
-const int rtStepPin = 50; //right stepper motor step pin (pin 44 for wireless)
-const int rtDirPin = 51;  // right stepper motor direction pin (pin 49 for wireless)
-const int ltStepPin = 52; //left stepper motor step pin (pin 46 for wireless)
+const int rtStepPin = 44; //right stepper motor step pin (pin 44 for wireless)
+const int rtDirPin = 49;  // right stepper motor direction pin (pin 49 for wireless)
+const int ltStepPin = 46; //left stepper motor step pin (pin 46 for wireless)
 const int ltDirPin = 53;  //left stepper motor direction pin
 const int stepTime = 300; //delay time between high and low on step pin
 
@@ -81,11 +82,10 @@ AccelStepper stepperRight(AccelStepper::DRIVER, rtStepPin, rtDirPin);//create in
 AccelStepper stepperLeft(AccelStepper::DRIVER, ltStepPin, ltDirPin);//create instance of left stepper motor object (2 driver pins, step pin 50, direction input pin 51)
 MultiStepper steppers;//create instance to control multiple steppers at the same time
 
-#define stepperEnable 48    //stepper enable pin on stepStick 
-#define enableLED 13        //stepper enabled LED
-#define redLED 5           //red LED for displaying states
-#define grnLED 6         //green LED for displaying states
-#define ylwLED 7        //yellow LED for displaying states
+#define stepperEnable 48    //stepper enable pin on stepStick
+#define redLED 11           //red LED for displaying states
+#define grnLED 12         //green LED for displaying states
+#define ylwLED 13        //yellow LED for displaying states
 #define stepperEnTrue false //variable for enabling stepper motor
 #define stepperEnFalse true //variable for disabling stepper motor
 
@@ -98,8 +98,6 @@ void setup() {
   pinMode(ltDirPin, OUTPUT);//sets pin as output
   pinMode(stepperEnable, OUTPUT);//sets pin as output
   digitalWrite(stepperEnable, stepperEnFalse);//turns off the stepper motor driver
-  pinMode(enableLED, OUTPUT);//set enable LED as output
-  digitalWrite(enableLED, LOW);//turn off enable LED
   pinMode(redLED, OUTPUT);//set red LED as output
   pinMode(grnLED, OUTPUT);//set green LED as output
   pinMode(ylwLED, OUTPUT);//set yellow LED as output
@@ -118,117 +116,73 @@ void setup() {
   steppers.addStepper(stepperRight);//add right motor to MultiStepper
   steppers.addStepper(stepperLeft);//add left motor to MultiStepper
   digitalWrite(stepperEnable, stepperEnTrue);//turns on the stepper motor driver
-  digitalWrite(enableLED, HIGH);//turn on enable LED
-  //delay(pauseTime); //always wait 2.5 seconds before the robot moves
-  //Serial.begin(9600); //start serial communication at 9600 baud rate for debugging
-
-  delay(3000);//wait 5 seconds
-
-  // Light up red, yellow, green, then start program
-  delay(500);
-  digitalWrite(redLED, HIGH);
-  digitalWrite(grnLED, LOW);
-  digitalWrite(ylwLED, LOW);
-  delay(500);
-  digitalWrite(redLED, LOW);
-  digitalWrite(grnLED, LOW);
-  digitalWrite(ylwLED, HIGH);
-  delay(500);
-  digitalWrite(redLED, LOW);
-  digitalWrite(grnLED, HIGH);
-  digitalWrite(ylwLED, LOW);
-  delay(500);
 
 
 
-  
   Serial.begin(baud_rate);//start serial communication
+  
   radio.begin();//start radio
   radio.setChannel(team_channel);//set the transmit and receive channels to avoid interference
   if (transmit) {
     radio.openWritingPipe(pipe);//open up writing pipe
-    //radio.openWritingPipe(addresses[1]);//open reading pipe
-    //radio.openReadingPipe(1, addresses[0]);//open reading pipe
     Serial.println("***********************************");
     Serial.println("....Starting nRF24L01 Transmit.....");
     Serial.println("***********************************");
   } else {
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();;//start listening for data;
-    //radio.openReadingPipe(1, addresses[1]);//open up reading pipe
-    //radio.openWritingPipe(addresses[0]);//open writing pipe
     Serial.println("***********************************");
     Serial.println("....Starting nRF24L01 Receive.....");
     Serial.println("***********************************");
   }
   
 
-  // NEW STUFF
+  // NEW STUFF to be rid of once we have stuff to send
   pinMode(ledPin, OUTPUT); // Set pin as OUTPUT
   
 }
 
 void loop() {
 
-  delay(5);
-  radio.stopListening();
-  // read sensors
-  double fDist = irRead(0);
-  double bDist = irRead(1);
-  double rDist = irRead(2);
-  double lDist = irRead(3);
-  Serial.println(fDist);
-  outgoingIRData[0] = fDist;
-  outgoingIRData[1] = bDist;
-  outgoingIRData[2] = rDist;
-  outgoingIRData[3] = lDist;
-  
-  radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
+  if(transmit){
+    delay(5);
+    radio.stopListening();
+    // read sensors
+    double fDist = irRead(0);
+    double bDist = irRead(1);
+    double rDist = irRead(2);
+    double lDist = irRead(3);
+    Serial.println(fDist);
+    outgoingIRData[0] = fDist;
+    outgoingIRData[1] = bDist;
+    outgoingIRData[2] = rDist;
+    outgoingIRData[3] = lDist;
+    
+    radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
+  }
 
-  
-//  delay(5);
-//  radio.startListening();
-//  while (!radio.available());
-//  radio.read(&buttonState, sizeof(buttonState));
-//  if (buttonState == HIGH) {
-//    digitalWrite(led, HIGH);
-//  }
-//  else {
-//    digitalWrite(led, LOW);
-//  }
+  if (!transmit) {
+    while (radio.available()) {
+      radio.read(&incoming, 1);
+      if (incoming[0] > 0) {
+        Serial.println(incoming[0]);
+        Serial.println("NUMBER 1");
 
+        ledState = !ledState; //flip the ledState
+        digitalWrite(ledPin, ledState); 
 
+        if(incoming[0] == 1) //if we get a 1
+        {
+          Serial.println("erelievevgb23iurrg");
+        }
+        
+        delay(100);
+      }
+    }//end while
 
-
-
-  
-//  if (!transmit) {
-//    /// Use this code to receive from the laptop or the robot
-//    while (radio.available()) {
-//      //radio.read(&data, sizeof(data));
-//      //Serial.println(data[0]);//print the data stream
-//      radio.read(&incoming, 1);
-//      if (incoming[0] > 0) {
-//        Serial.println(incoming[0]);
-//        Serial.println("NUMBER 1");
-//
-//        ledState = !ledState; //flip the ledState
-//        digitalWrite(ledPin, ledState); 
-//
-//        if(incoming[0] == 2) //if we get a 1
-//        {
-//          Serial.println("erelievevgb23iurrg");
-//           ledState = !ledState; //flip the ledState
-//           digitalWrite(ledPin, ledState); 
-//        }
-//        
-//        delay(100);
-//      }
-//    }//end while
-//
-//    
-//  }
-//  delay(100);//wait so the data is readable
+    
+  }
+  delay(100);//wait so the data is readable
 }
 
 
