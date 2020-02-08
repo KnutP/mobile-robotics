@@ -41,7 +41,7 @@
 #define baud_rate 9600
 
 //variables
-boolean transmit = false;              //set variable to send or receive data (use same code for both devices but change variable)
+boolean transmit = true;              //set variable to send or receive data (use same code for both devices but change variable)
 boolean uno = false;                   //set variable for type of microcontroller sending (uno-true-laptop,uno-false-robot)
 RF24 radio(CE_PIN, CSN_PIN);          //create instance of radio object
 #define team_channel 14              //set communication channel
@@ -54,6 +54,8 @@ uint8_t state[] = {0, 0};               //variable to hold receive data position
 uint8_t mapDat[4][4];                   //variable to hold receive data MAP
 uint8_t lastSend;                      // Store last send time
 
+double outgoingIRData[1];
+
 
 // NEW STUFF
 
@@ -62,19 +64,103 @@ int ledPin = 13; // Set the pin to digital I/O 13
 boolean ledState = LOW; //to toggle our LED
 
 
+#include <AccelStepper.h>//include the stepper motor library
+#include <MultiStepper.h>//include multiple stepper motor library
+#include <NewPing.h> //include sonar library
+#include <TimerOne.h>//include timer interrupt library
+#include <math.h>
+
+//define pin numbers
+const int rtStepPin = 50; //right stepper motor step pin (pin 44 for wireless)
+const int rtDirPin = 51;  // right stepper motor direction pin (pin 49 for wireless)
+const int ltStepPin = 52; //left stepper motor step pin (pin 46 for wireless)
+const int ltDirPin = 53;  //left stepper motor direction pin
+const int stepTime = 300; //delay time between high and low on step pin
+
+AccelStepper stepperRight(AccelStepper::DRIVER, rtStepPin, rtDirPin);//create instance of right stepper motor object (2 driver pins, low to high transition step pin 52, direction input pin 53 (high means forward)
+AccelStepper stepperLeft(AccelStepper::DRIVER, ltStepPin, ltDirPin);//create instance of left stepper motor object (2 driver pins, step pin 50, direction input pin 51)
+MultiStepper steppers;//create instance to control multiple steppers at the same time
+
+#define stepperEnable 48    //stepper enable pin on stepStick 
+#define enableLED 13        //stepper enabled LED
+#define redLED 5           //red LED for displaying states
+#define grnLED 6         //green LED for displaying states
+#define ylwLED 7        //yellow LED for displaying states
+#define stepperEnTrue false //variable for enabling stepper motor
+#define stepperEnFalse true //variable for disabling stepper motor
+
+
 
 void setup() {
+  pinMode(rtStepPin, OUTPUT);//sets pin as output
+  pinMode(rtDirPin, OUTPUT);//sets pin as output
+  pinMode(ltStepPin, OUTPUT);//sets pin as output
+  pinMode(ltDirPin, OUTPUT);//sets pin as output
+  pinMode(stepperEnable, OUTPUT);//sets pin as output
+  digitalWrite(stepperEnable, stepperEnFalse);//turns off the stepper motor driver
+  pinMode(enableLED, OUTPUT);//set enable LED as output
+  digitalWrite(enableLED, LOW);//turn off enable LED
+  pinMode(redLED, OUTPUT);//set red LED as output
+  pinMode(grnLED, OUTPUT);//set green LED as output
+  pinMode(ylwLED, OUTPUT);//set yellow LED as output
+  digitalWrite(redLED, HIGH);//turn on red LED
+  digitalWrite(ylwLED, HIGH);//turn on yellow LED
+  digitalWrite(grnLED, HIGH);//turn on green LED
+  digitalWrite(redLED, LOW);//turn off red LED
+  digitalWrite(ylwLED, LOW);//turn off yellow LED
+  digitalWrite(grnLED, LOW);//turn off green LED
+
+
+  stepperRight.setMaxSpeed(4000);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
+  stepperRight.setAcceleration(10000);//set desired acceleration in steps/s^2
+  stepperLeft.setMaxSpeed(4000);//set the maximum permitted speed limited by processor and clock speed, no greater than 4000 steps/sec on Arduino
+  stepperLeft.setAcceleration(10000);//set desired acceleration in steps/s^2
+  steppers.addStepper(stepperRight);//add right motor to MultiStepper
+  steppers.addStepper(stepperLeft);//add left motor to MultiStepper
+  digitalWrite(stepperEnable, stepperEnTrue);//turns on the stepper motor driver
+  digitalWrite(enableLED, HIGH);//turn on enable LED
+  //delay(pauseTime); //always wait 2.5 seconds before the robot moves
+  //Serial.begin(9600); //start serial communication at 9600 baud rate for debugging
+
+  delay(3000);//wait 5 seconds
+
+  // Light up red, yellow, green, then start program
+  delay(500);
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, LOW);
+  delay(500);
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, HIGH);
+  delay(500);
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, LOW);
+  delay(500);
+
+
+
+  
   Serial.begin(baud_rate);//start serial communication
   radio.begin();//start radio
   radio.setChannel(team_channel);//set the transmit and receive channels to avoid interference
-  
-  radio.openReadingPipe(1, pipe);//open up reading pipe
-  radio.startListening();;//start listening for data;
-  //radio.openReadingPipe(1, addresses[1]);//open up reading pipe
-  //radio.openWritingPipe(addresses[0]);//open writing pipe
-  Serial.println("***********************************");
-  Serial.println("....Starting nRF24L01 Receive.....");
-  Serial.println("***********************************");
+  if (transmit) {
+    radio.openWritingPipe(pipe);//open up writing pipe
+    //radio.openWritingPipe(addresses[1]);//open reading pipe
+    //radio.openReadingPipe(1, addresses[0]);//open reading pipe
+    Serial.println("***********************************");
+    Serial.println("....Starting nRF24L01 Transmit.....");
+    Serial.println("***********************************");
+  } else {
+    radio.openReadingPipe(1, pipe);//open up reading pipe
+    radio.startListening();;//start listening for data;
+    //radio.openReadingPipe(1, addresses[1]);//open up reading pipe
+    //radio.openWritingPipe(addresses[0]);//open writing pipe
+    Serial.println("***********************************");
+    Serial.println("....Starting nRF24L01 Receive.....");
+    Serial.println("***********************************");
+  }
   
 
   // NEW STUFF
@@ -83,31 +169,159 @@ void setup() {
 }
 
 void loop() {
-  if (!transmit) {
-    /// Use this code to receive from the laptop or the robot
-    while (radio.available()) {
-      //radio.read(&data, sizeof(data));
-      //Serial.println(data[0]);//print the data stream
-      radio.read(&incoming, 1);
-      if (incoming[0] > 0) {
-        Serial.println(incoming[0]);
-        Serial.println("NUMBER 1");
 
-        ledState = !ledState; //flip the ledState
-        digitalWrite(ledPin, ledState); 
+  delay(5);
+  radio.stopListening();
+  // read sensors
+  double fDist = irRead(0);
+  double bDist = irRead(1);
+  double rDist = irRead(2);
+  double lDist = irRead(3);
+  Serial.println(fDist);
+  outgoingIRData[0] = fDist;
+  outgoingIRData[1] = bDist;
+  outgoingIRData[2] = rDist;
+  outgoingIRData[3] = lDist;
+  
+  radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
 
-        if(incoming[0] == 2) //if we get a 1
-        {
-          Serial.println("erelievevgb23iurrg");
-           ledState = !ledState; //flip the ledState
-           digitalWrite(ledPin, ledState); 
-        }
-        
-        delay(100);
-      }
-    }//end while
+  
+//  delay(5);
+//  radio.startListening();
+//  while (!radio.available());
+//  radio.read(&buttonState, sizeof(buttonState));
+//  if (buttonState == HIGH) {
+//    digitalWrite(led, HIGH);
+//  }
+//  else {
+//    digitalWrite(led, LOW);
+//  }
 
-    
+
+
+
+
+  
+//  if (!transmit) {
+//    /// Use this code to receive from the laptop or the robot
+//    while (radio.available()) {
+//      //radio.read(&data, sizeof(data));
+//      //Serial.println(data[0]);//print the data stream
+//      radio.read(&incoming, 1);
+//      if (incoming[0] > 0) {
+//        Serial.println(incoming[0]);
+//        Serial.println("NUMBER 1");
+//
+//        ledState = !ledState; //flip the ledState
+//        digitalWrite(ledPin, ledState); 
+//
+//        if(incoming[0] == 2) //if we get a 1
+//        {
+//          Serial.println("erelievevgb23iurrg");
+//           ledState = !ledState; //flip the ledState
+//           digitalWrite(ledPin, ledState); 
+//        }
+//        
+//        delay(100);
+//      }
+//    }//end while
+//
+//    
+//  }
+//  delay(100);//wait so the data is readable
+}
+
+
+
+
+/* irRead is a helper function that reads the irSensor value at the given pin,
+    converts the distance to inches, and returns the value.
+*/
+double irRead(int pin) {
+  int value = 0;
+  for (int i = 0; i < 30; i++) {
+    value = value + analogRead(pin);
   }
-  delay(100);//wait so the data is readable
-}//end of loop
+  value = value / 30;
+
+  if (pin == 0) {
+    return 8452.3 * pow(value, -1.235); // front sensor
+  } else if (pin == 1) {
+    return 8916.1 * pow(value, -1.274); // back sensor
+  } else if (pin == 3) {
+    return 9992.4 * pow(value, -1.29); // left sensor
+  } else if (pin == 2) {
+    return 10910 * pow(value, -1.311); // right sensor
+  } else {
+    return 0;
+  }
+
+}
+
+
+/*
+  The forward function takes in a distance to drive in inches,
+  then drives forward that distance.
+*/
+void forward(int distance) {
+  int ticksPerInch = 76;
+  int ticksToDrive = distance * ticksPerInch;
+
+  stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+  stepperRight.setCurrentPosition(0);//set right wheel position to zero
+  stepperRight.moveTo(ticksToDrive);//move one full rotation forward relative to current position
+  stepperLeft.moveTo(ticksToDrive);//move one full rotation forward relative to current position
+  stepperRight.setSpeed(400);//set right motor speed
+  stepperLeft.setSpeed(400);//set left motor speed
+  stepperRight.runSpeedToPosition();//move right motor
+  stepperLeft.runSpeedToPosition();//move left motor
+  runToStop();//run until the robot reaches the target
+
+}
+
+
+/*
+  The goToAngle function takes in an angle in degrees (positive values are left, negative are right),
+  then spins the robot to that angle.
+*/
+void goToAngle(int angle) {
+
+  double ticksPerDegree = 5.62;
+  int ticksToDrive = (int)(angle * ticksPerDegree);
+
+  stepperLeft.setCurrentPosition(0);//set left wheel position to zero
+  stepperRight.setCurrentPosition(0);//set right wheel position to zero
+
+  stepperRight.setMaxSpeed(500);//set right motor speed
+  stepperLeft.setMaxSpeed(500);//set left motor speed
+  stepperRight.moveTo(ticksToDrive);//set distance for right wheel to move
+  stepperLeft.moveTo(-ticksToDrive);//set distance for left wheel to move
+  stepperRight.runSpeedToPosition();//move right motor
+  stepperLeft.runSpeedToPosition();//move left motor
+  runToStop();//run until the robot reaches the target
+
+}
+
+
+/*This function, runToStop(), will run the robot until the target is achieved and
+   then stop it
+*/
+void runToStop ( void ) {
+  int runNow = 1;
+  int rightStopped = 0;
+  int leftStopped = 0;
+
+  while (runNow) {
+    if (!stepperRight.run()) {
+      rightStopped = 1;
+      stepperRight.stop();//stop right motor
+    }
+    if (!stepperLeft.run()) {
+      leftStopped = 1;
+      stepperLeft.stop();//stop ledt motor
+    }
+    if (rightStopped && leftStopped) {
+      runNow = 0;
+    }
+  }
+}

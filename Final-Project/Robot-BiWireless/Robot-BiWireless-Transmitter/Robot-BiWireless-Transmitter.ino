@@ -41,7 +41,7 @@
 #define baud_rate 9600
 
 //variables
-boolean transmit = true;              //set variable to send or receive data (use same code for both devices but change variable)
+boolean transmit = false;              //set variable to send or receive data (use same code for both devices but change variable)
 boolean uno = true;                   //set variable for type of microcontroller sending (uno-true-laptop,uno-false-robot)
 RF24 radio(CE_PIN, CSN_PIN);          //create instance of radio object
 #define team_channel 14              //set communication channel
@@ -135,20 +135,18 @@ void loop() {
     // Serial.println("no transmit radio");
     //}//no transmit radio
   }//end of transmit if
+  
   else if (!transmit) {
     /// Use this code to receive from the laptop or the robot
     while (radio.available()) {
-      radio.read(&data, sizeof(data));
-      Serial.println(data[0]);//print the data stream
+      //radio.read(&data, sizeof(data));
+      //Serial.println(data[0]);//print the data stream
       radio.read(&incoming, 1);
+      
+//      Serial.println(incoming[0]);
+      
       if (incoming[0] > 0) {
         Serial.println(incoming[0]);
-        if(incoming[0] == '1') //if we get a 1
-        {
-           ledState = !ledState; //flip the ledState
-           digitalWrite(ledPin, ledState); 
-        }
-        delay(100);
       }
     }//end while
 
