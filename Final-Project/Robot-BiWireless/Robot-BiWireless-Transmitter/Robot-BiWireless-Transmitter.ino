@@ -41,7 +41,7 @@
 #define baud_rate 9600
 
 //variables
-boolean transmit = false;              //set variable to send or receive data (use same code for both devices but change variable)
+boolean transmit = true;              //set variable to send or receive data (use same code for both devices but change variable)
 boolean uno = true;                   //set variable for type of microcontroller sending (uno-true-laptop,uno-false-robot)
 RF24 radio(CE_PIN, CSN_PIN);          //create instance of radio object
 #define team_channel 14              //set communication channel
@@ -53,6 +53,14 @@ uint8_t incoming[1];                        //variable to hold receive data
 uint8_t state[] = {0, 0};               //variable to hold receive data position
 uint8_t mapDat[4][4];                   //variable to hold receive data MAP
 uint8_t lastSend;                      // Store last send time
+
+const byte numChars = 32;
+char receivedChars[numChars]; // an array to store the received data
+char receivedChar;
+
+boolean newData = false;
+
+String slrt = "";
 
 
 
@@ -78,11 +86,30 @@ void setup() {
 void loop() {
   if (transmit) {
     readSerial();
-      if (data[0] > 0) {
-        Serial.println(data[0]);
-        radio.write(data, sizeof(data));
-        data[0] = 0;
-      }
+//
+//    if (Serial.available() > 0) {
+//      
+//      // read the incoming:
+//      slrt = Serial.readString();
+//      // say what you got:
+//      Serial.println(slrt);   
+//  
+//      //Serial.flush();
+//      
+//      for(int i = 0; i<slrt.length(); i++){
+//        data[i] = slrt.charAt(i);
+//      }
+//
+//      
+//    }
+
+    
+    if (data[0] > 0) {
+      Serial.println(data[0]);
+      radio.write(data, sizeof(data));
+      data[0] = 0;
+      Serial.println("Sending data");
+    }
 
   }
   
@@ -103,11 +130,14 @@ void loop() {
 void readSerial() {
   if (Serial.available() > 0) {
     data[0] = Serial.parseInt();
+    
+      Serial.println(data[0]);
     if (data[0] > 1) {
       Serial.println(data[0]);
     }
   }
 }
+
 
 void establishContact() {
   while (Serial.available() <= 0) {
