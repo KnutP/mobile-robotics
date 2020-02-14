@@ -86,23 +86,6 @@ void setup() {
 void loop() {
   if (transmit) {
     readSerial();
-//
-//    if (Serial.available() > 0) {
-//      
-//      // read the incoming:
-//      slrt = Serial.readString();
-//      // say what you got:
-//      Serial.println(slrt);   
-//  
-//      //Serial.flush();
-//      
-//      for(int i = 0; i<slrt.length(); i++){
-//        data[i] = slrt.charAt(i);
-//      }
-//
-//      
-//    }
-
     
     if (data[0] > 0) {
       Serial.println(data[0]);
@@ -138,10 +121,10 @@ void readSerial() {
   }
 }
 
-
-void establishContact() {
-  while (Serial.available() <= 0) {
-  Serial.println("A");   // send a capital A
-  delay(300);
-  }
-}
+//
+//void establishContact() {
+//  while (Serial.available() <= 0) {
+//  Serial.println("A");   // send a capital A
+//  delay(300);
+//  }
+//}

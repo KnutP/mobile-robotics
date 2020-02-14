@@ -12,6 +12,8 @@ int gridYOffset = 100;
 int boxWidth = 50;
 String input;
 String lastText = "";
+int manhattanNumber=0;
+int[][] wavefrontGrid = new int[4][4];
 
 import controlP5.*;
 ControlP5 cp5;
@@ -30,6 +32,9 @@ void setup() {
   cp5 = new ControlP5(this);
   cp5.addTextfield("textInput").setPosition(400, 450).setSize(200, 40).setAutoClear(false);
   cp5.addBang("Submit").setPosition(400, 500).setSize(80, 40); 
+  
+  cp5.addTextfield("textInputGoal").setPosition(100, 450).setSize(200, 40).setAutoClear(false);
+  cp5.addBang("SubmitGoal").setPosition(100, 500).setSize(80, 40); 
   
   
   size(700, 600); //make our canvas 200 x 200 pixels big
@@ -105,6 +110,13 @@ void draw() {
    }
  }
   
+  for(int i=0;i<4;i++) {
+   for(int j=0;j<4;j++){
+     
+     stroke(0);
+     text(wavefrontGrid[i][j], gridXOffset+10+(i*50),gridYOffset+40+(j*50));
+   }
+ } 
   
 }
 
@@ -139,6 +151,16 @@ void Submit() {
   //myPort.write(input);
   //println(input);
   
+}
+
+void SubmitGoal() {
+  print("the following goal was submitted :");
+  input = cp5.get(Textfield.class,"textInputGoal").getText();
+  println(" textInputGoal = " + input);
+  int goalX = input.charAt(0) - '0';
+  int goalY = input.charAt(1) - '0';
+  createWavefront(goalX,goalY);
+  // how to overlap the wavefront numbers with the obsatcles and get that to work together
 }
 
 void drawLineFromClick(int clickNumber, int row, int column){
@@ -259,39 +281,17 @@ void displayMap( PShape[][] map) {
   
 }
 
-/*
-void serialEvent( Serial myPort) {
-//put the incoming data into a String - 
-//the '\n' is our end delimiter indicating the end of a complete packet
-val = myPort.readStringUntil('\n');
-//make sure our data isn't empty before continuing
-if (val != null) {
-  //trim whitespace and formatting characters (like carriage return)
-  val = trim(val);
-  println(val);
 
-  //look for our 'A' string to start the handshake
-  //if it's there, clear the buffer, and send a request for data
-  if (firstContact == false) {
-    if (val.equals("A")) {
-      myPort.clear();
-      firstContact = true;
-      myPort.write("A");
-      println("contact");
-    }
+void createWavefront(int goalX, int goalY){
+ 
+  for (int i = 0; i < 4; i++){
+     for(int j = 0; j < 4; j++){
+       
+       manhattanNumber = abs(i-goalX)+abs(j-goalY);
+       wavefrontGrid[i][j] = manhattanNumber;
+       manhattanNumber=0;
+       
+     }
   }
-  else { //if we've already established contact, keep getting and parsing data
-    println(val);
-
-    if (mousePressed == true) 
-    {                           //if we clicked in the window
-      myPort.write('1');        //send a 1
-      println("1");
-    }
-
-    // when you've parsed the data you have, ask for more:
-    myPort.write("A");
-    }
-  }
+ 
 }
-*/

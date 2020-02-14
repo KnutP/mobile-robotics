@@ -89,6 +89,19 @@ MultiStepper steppers;//create instance to control multiple steppers at the same
 #define stepperEnTrue false //variable for enabling stepper motor
 #define stepperEnFalse true //variable for disabling stepper motor
 
+double motorSpeed = 200;
+double lError = 0;
+double rError = 0;
+
+double lPrevError = 0;
+double rPrevError = 0;
+
+double currentTime = 0;
+double lastTime = 0;
+
+double drEdt = 0;
+double dlEdt = 0;
+
 
 
 void setup() {
@@ -180,14 +193,33 @@ void loop() {
         if(incoming[0] == 2) //if we get a 1
         {
           Serial.println("Got a 2 (L)");
+          while (irRead(3)<15){
+           rightWallFollow();
+          }
+            forward(4);
+            goToAngle(90);
+            forward(15);
+            delay(300);
         }
         if(incoming[0] == 3) //if we get a 1
         {
           Serial.println("Got a 3 (R)");
+          while (irRead(2)<15){
+            leftWallFollow();
+            
+          }
+            forward(4);
+            goToAngle(-90);
+            forward(15);
+            delay(300);
         }
         if(incoming[0] == 4) //if we get a 1
         {
           Serial.println("Got a 4 (T)");
+          while(irRead(0) > 6){
+          rightWallFollow();
+          }
+          stop();
         }
         
         delay(100);
@@ -239,8 +271,8 @@ void forward(int distance) {
   stepperRight.setCurrentPosition(0);//set right wheel position to zero
   stepperRight.moveTo(ticksToDrive);//move one full rotation forward relative to current position
   stepperLeft.moveTo(ticksToDrive);//move one full rotation forward relative to current position
-  stepperRight.setSpeed(400);//set right motor speed
-  stepperLeft.setSpeed(400);//set left motor speed
+  stepperRight.setMaxSpeed(400);//set right motor speed
+  stepperLeft.setMaxSpeed(400);//set left motor speed
   stepperRight.runSpeedToPosition();//move right motor
   stepperLeft.runSpeedToPosition();//move left motor
   runToStop();//run until the robot reaches the target
@@ -292,4 +324,131 @@ void runToStop ( void ) {
       runNow = 0;
     }
   }
+}
+
+/*
+    aggressiveKid has the robot move until he is within
+    a certain range of an object, the stop
+*/
+void aggressiveKid() {
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, LOW);
+
+  // if the front ir sensor sees something, stop
+  while (irRead(0) > 6) {
+
+    double leftSpeed = motorSpeed;
+    double rightSpeed = motorSpeed;
+
+    stepperRight.setSpeed(rightSpeed);//set right motor speed
+    stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+    double beginMillis = millis();
+    while (millis() < beginMillis + 50) {
+      stepperRight.runSpeed();//move right motor
+      stepperLeft.runSpeed();//move left motor
+    }
+  }
+  stop();
+}
+
+void stop() {
+  stepperRight.stop();//stop right motor
+  stepperLeft.stop();//stop left motor
+}
+
+/* 
+ *  Follow a wall on the right side of the robot using PD control
+ */
+void rightWallFollow(){
+
+  digitalWrite(redLED, HIGH);
+  digitalWrite(grnLED, LOW);
+  digitalWrite(ylwLED, HIGH);
+  
+  updateError();
+
+  double kp = 30;
+  double kd = 10.0;
+
+  // if we lose the wall, turn toward where it was
+  // adjust speed based on distance between robot and wall
+  double rightSpeed = (motorSpeed + kp*rError + kd*drEdt);
+  double leftSpeed = motorSpeed;
+  
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+   double beginMillis = millis();
+    while (millis() < beginMillis + 50) {
+      stepperRight.runSpeed();//move right motor
+      stepperLeft.runSpeed();//move left motor
+    }
+
+}
+
+void leftWallFollow(){
+
+  digitalWrite(redLED, LOW);
+  digitalWrite(grnLED, HIGH);
+  digitalWrite(ylwLED, HIGH);
+  
+  updateError();
+
+  double kp = 30;
+  double kd = 10.0;
+
+  // adjust speed based on distance between robot and wall
+  double leftSpeed = (motorSpeed + kp*lError + kd*dlEdt);
+  double rightSpeed = motorSpeed;
+
+  stepperRight.setSpeed(rightSpeed);//set right motor speed
+  stepperLeft.setSpeed(leftSpeed);//set left motor speed
+
+  double beginMillis = millis();
+  while(millis()<beginMillis + 50){
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor 
+  }
+}
+
+
+void updateError(){
+
+  double rDist = irRead(2);
+  double lDist = irRead(3);
+
+  if(rDist>5){
+    rError = 5-rDist;
+  }
+  else if(rDist<5){
+    rError = 5-rDist;
+  }
+
+  if(lDist>5){
+    lError = 5-lDist;
+  }
+  else if(lDist<5){
+    lError = 5-lDist;
+  }
+
+  updateDerivatives();
+  
+}
+
+/* updateDerivatives is a helper function that calculates
+ *  the change in error over the change in time
+ *  for the left and right sides of the robot since the
+ *  last time the function was called.
+ */
+double updateDerivatives(){
+  currentTime = millis();
+
+  drEdt = (rError-rPrevError)/(currentTime - lastTime);
+  dlEdt = (lError-lPrevError)/(currentTime - lastTime);
+  
+  rPrevError = rError;
+  lPrevError = lError;
+  lastTime = currentTime;
 }
