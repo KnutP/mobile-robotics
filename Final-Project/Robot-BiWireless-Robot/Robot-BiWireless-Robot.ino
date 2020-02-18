@@ -68,6 +68,8 @@ char val; // Data received from the serial port
 int ledPin = 13; // Set the pin to digital I/O 13
 boolean ledState = LOW; //to toggle our LED
 
+enum RobotDirection {N, S, E, W};
+RobotDirection robotDirection = N;
 
 
 
@@ -130,8 +132,6 @@ void setup() {
   steppers.addStepper(stepperLeft);//add left motor to MultiStepper
   digitalWrite(stepperEnable, stepperEnTrue);//turns on the stepper motor driver
 
-
-
   Serial.begin(baud_rate);//start serial communication
   
   radio.begin();//start radio
@@ -175,16 +175,18 @@ void loop() {
   }
 
   if (!transmit) {
-//    Serial.println("I am recieving");
     while (radio.available()) {
       radio.read(&incoming, 1);
-//      Serial.println("radio is available");
+
+      Serial.println(incoming[0]);
+      
       if (incoming[0] > 0) {
-//        Serial.println(incoming[0]);
-//        Serial.println("NUMBER 1");
+        
 
         ledState = !ledState; //flip the ledState
         digitalWrite(ledPin, ledState); 
+
+        //****** Topological ******\\
 
         if(incoming[0] == 1) //if we get a 1
         {
@@ -196,7 +198,7 @@ void loop() {
           while (irRead(3)<15){
            rightWallFollow();
           }
-            forward(4);
+            forward(5);
             goToAngle(90);
             forward(15);
             delay(300);
@@ -208,7 +210,7 @@ void loop() {
             leftWallFollow();
             
           }
-            forward(4);
+            forward(5);
             goToAngle(-90);
             forward(15);
             delay(300);
@@ -221,6 +223,36 @@ void loop() {
           }
           stop();
         }
+
+        //****** Metric ******\\
+
+        if(incoming[0] == 5) //if we get a 5
+        {
+          Serial.println("got a 5 (N)");
+          turnToNorth();
+          forward(15);
+        }
+        if(incoming[0] == 6) //if we get a 6
+        {
+          Serial.println("got a 6 (S)");
+          turnToSouth();
+          forward(15);
+        }
+        if(incoming[0] == 7) //if we get a 7
+        {
+          Serial.println("got a 7 (E)");
+          turnToEast();
+          forward(15);
+        }
+        if(incoming[0] == 8) //if we get an 8
+        {
+          Serial.println("got a 8 (W)");
+          turnToWest();
+          forward(15);
+        }
+
+
+        
         
         delay(100);
       }
@@ -231,6 +263,69 @@ void loop() {
   delay(100);//wait so the data is readable
 }
 
+void turnToNorth(){
+
+  if(robotDirection == N){
+    // do nothing
+  } else if (robotDirection == S){
+    goToAngle(180);
+  } else if (robotDirection == E){
+    goToAngle(90);
+  } else if (robotDirection == W){
+    goToAngle(-90);
+  }
+
+  robotDirection = N;
+  
+}
+
+void turnToSouth(){
+
+  if(robotDirection == N){
+    goToAngle(180);
+  } else if (robotDirection == S){
+    // do nothing
+  } else if (robotDirection == E){
+    goToAngle(-90);
+  } else if (robotDirection == W){
+    goToAngle(90);
+  }
+
+  robotDirection = S;
+  
+}
+
+void turnToEast(){
+
+  if(robotDirection == N){
+    goToAngle(-90);
+  } else if (robotDirection == S){
+    goToAngle(90);
+  } else if (robotDirection == E){
+    // do nothing
+  } else if (robotDirection == W){
+    goToAngle(-180);
+  }
+
+  robotDirection = E;
+  
+}
+
+void turnToWest(){
+
+  if(robotDirection == N){
+    goToAngle(90);
+  } else if (robotDirection == S){
+    goToAngle(-90);
+  } else if (robotDirection == E){
+    goToAngle(180);
+  } else if (robotDirection == W){
+    // do nothing
+  }
+
+  robotDirection = W;
+  
+}
 
 
 
@@ -396,7 +491,7 @@ void leftWallFollow(){
   
   updateError();
 
-  double kp = 30;
+  double kp = 20;
   double kd = 10.0;
 
   // adjust speed based on distance between robot and wall

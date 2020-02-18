@@ -1,19 +1,44 @@
 import processing.serial.*;
  Serial myPort;
  String val;
-// since we're doing serial handshaking, 
-// we need to check if we've heard from the microcontroller
 boolean firstContact = false;
 PShape[][] map = new PShape[4][4]; 
 PFont font;
-int[][] gridLayout = new int[4][4];
+//int[][] gridLayout = new int[4][4];
+
+int gridLayout[][] =
+    {
+      // Occupancy Grid
+      {11, 15, 13,  3},
+      {10, 15, 15, 10},
+      { 8,  5,  5,  2},
+      {14, 15, 15, 14}
+    };
+    
+//int gridLayout[][] =
+//    {
+//      // Topological
+//      { 9,  1,  7, 11},
+//      {14,  8,  5,  2},
+//      { 9,  6,  9,  6},
+//      {14, 13,  6, 15}
+//    };
+    
+
+
 int gridXOffset = 250;
 int gridYOffset = 100;
+int robotX = -1;
+int robotY  = -1;
+int goalX = -1;
+int goalY = -1;
+
 int boxWidth = 50;
 String input;
 String lastText = "";
 int manhattanNumber=0;
 int[][] wavefrontGrid = new int[4][4];
+
 
 import controlP5.*;
 ControlP5 cp5;
@@ -24,6 +49,7 @@ Textfield myTextfield;
 
 
 void setup() {
+ 
   
   font = loadFont("Bahnschrift-32.vlw");
   textFont(font, 32);
@@ -36,8 +62,11 @@ void setup() {
   cp5.addTextfield("textInputGoal").setPosition(100, 450).setSize(200, 40).setAutoClear(false);
   cp5.addBang("SubmitGoal").setPosition(100, 500).setSize(80, 40); 
   
+  cp5.addTextfield("textInputPosition").setPosition(100, 550).setSize(200, 40).setAutoClear(false);
+  cp5.addBang("SubmitPosition").setPosition(100, 600).setSize(80, 40); 
   
-  size(700, 600); //make our canvas 200 x 200 pixels big
+  
+  size(700, 800); //make our canvas 200 x 200 pixels big
   //  initialize your serial port and set the baud rate to 9600
   myPort = new Serial(this, "COM7", 9600);
   myPort.bufferUntil('\n'); 
@@ -53,6 +82,7 @@ void setup() {
 }
 
 void draw() {
+  
   background(255);
   
   displayMap(map);
@@ -61,7 +91,7 @@ void draw() {
   text("Sensor Data", 100, 400);
   text("Commands", 400, 400);
   
-  
+  drawRobot();
   
   
   //val = myPort.readStringUntil('\n');
@@ -74,14 +104,6 @@ void draw() {
     lastText = val;
   }
   text(lastText, 100, 450);
-  
-  
-  if (mousePressed == true ) 
-    {             //if we clicked in the window
-      //myPort.write('1');        //send a 1
-      println("2");
-      mousePressed = false;
-    }
     
   if (mousePressed == true && getMouseLocation()[1] != -1){
     
@@ -117,6 +139,107 @@ void draw() {
      text(wavefrontGrid[i][j], gridXOffset+10+(i*50),gridYOffset+40+(j*50));
    }
  } 
+ 
+ followPath();
+ 
+  
+}
+
+
+void followPath(){
+
+  if((robotX != -1 && robotY != -1 && goalX != -1 && goalY != -1) && (robotX != goalX || robotY != goalY)){
+    int options[]={99,99,99,99};
+    int smallestNum = 99;
+    int directionToDrive = 99;
+    int obstacleNum = gridLayout[robotY][robotX];
+   
+    if(canMoveNorth(obstacleNum)){
+      options[0] = wavefrontGrid[robotX][robotY-1];
+    }
+    if(canMoveSouth(obstacleNum)){
+      options[1] = wavefrontGrid[robotX][robotY+1];
+    }
+    if(canMoveEast(obstacleNum)){
+      options[2] = wavefrontGrid[robotX+1][robotY];
+    }
+    if(canMoveWest(obstacleNum)){
+      options[3] = wavefrontGrid[robotX-1][robotY];
+    }
+    
+    for(int i =0; i < 4; i++){
+      if(options[i] <= smallestNum){
+        smallestNum = options[i];
+        //becasue want to defer to turning if two numbers of equal size 
+        directionToDrive = i;
+      }
+    }
+    
+    if(directionToDrive==0){
+      // north
+      myPort.write('5');
+      println("moved north");
+      robotY += -1;
+    }
+    else if(directionToDrive==1){
+      // south
+      myPort.write('6');
+      println("moved south");
+      robotY += 1;
+    }
+    else if(directionToDrive==2){
+      // east
+      myPort.write('7');
+      println("moved east");
+      robotX += 1;
+    }
+    else if(directionToDrive==3){
+      // west
+      myPort.write('8');
+      println("moved west");
+      robotX += -1;
+    }
+    myPort.write('\n');
+  
+  }
+  
+  //delay(500);
+ 
+  
+  
+}
+
+boolean canMoveNorth(int obstacleNum){
+  
+  if(obstacleNum==0 || obstacleNum==2 || obstacleNum==4 || obstacleNum==6 || obstacleNum ==8 || obstacleNum==10 || obstacleNum==12 || obstacleNum==14){
+  return true;
+  }
+  return false;
+}
+
+boolean canMoveSouth(int obstacleNum){
+  
+  if(obstacleNum==0 || obstacleNum==1 || obstacleNum==2 || obstacleNum==3 || obstacleNum ==8 || obstacleNum==9 || obstacleNum==10 || obstacleNum==11){
+  return true;
+  }
+  return false;
+  
+}
+
+boolean canMoveEast(int obstacleNum){
+  
+  if(obstacleNum==0 || obstacleNum==1 || obstacleNum==4 || obstacleNum==5 || obstacleNum ==8 || obstacleNum==9 || obstacleNum==12 || obstacleNum==13){
+  return true;
+  }
+  return false;
+  
+}
+boolean canMoveWest(int obstacleNum){
+  
+  if(obstacleNum==0 || obstacleNum==1 || obstacleNum==2 || obstacleNum==3 || obstacleNum ==4 || obstacleNum==5 || obstacleNum==6 || obstacleNum==7){
+  return true;
+  }
+  return false;
   
 }
 
@@ -125,7 +248,6 @@ void Submit() {
   print("the following text was submitted :");
   input = cp5.get(Textfield.class,"textInput").getText();
   println(" textInput = " + input);
-//  byte topologicalPath [] = {};
   char currentChar;
   // s=1,l=2,r=3,t=4
   for(int i = 0; i < input.length(); i++){
@@ -148,8 +270,6 @@ void Submit() {
     
     
   }
-  //myPort.write(input);
-  //println(input);
   
 }
 
@@ -157,10 +277,24 @@ void SubmitGoal() {
   print("the following goal was submitted :");
   input = cp5.get(Textfield.class,"textInputGoal").getText();
   println(" textInputGoal = " + input);
-  int goalX = input.charAt(0) - '0';
-  int goalY = input.charAt(1) - '0';
-  createWavefront(goalX,goalY);
+  goalX = input.charAt(0) - '0';
+  goalY = input.charAt(1) - '0';
+  createWavefront();
   // how to overlap the wavefront numbers with the obsatcles and get that to work together
+}
+
+void SubmitPosition() {
+  print("the following goal was submitted :");
+  input = cp5.get(Textfield.class,"textInputPosition").getText();
+  println(" textInputPosition = " + input);
+  robotX = input.charAt(0) - '0';
+  robotY = input.charAt(1) - '0';
+}
+
+void drawRobot(){
+  
+  circle(gridXOffset+(robotX*50)+boxWidth/2,gridYOffset+(robotY*50)+boxWidth/2, 30);
+  
 }
 
 void drawLineFromClick(int clickNumber, int row, int column){
@@ -282,7 +416,7 @@ void displayMap( PShape[][] map) {
 }
 
 
-void createWavefront(int goalX, int goalY){
+void createWavefront(){
  
   for (int i = 0; i < 4; i++){
      for(int j = 0; j < 4; j++){

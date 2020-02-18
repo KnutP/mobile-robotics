@@ -25,9 +25,9 @@
 #include <math.h>
 
 //define pin numbers
-const int rtStepPin = 50; //right stepper motor step pin (pin 44 for wireless)
-const int rtDirPin = 51;  // right stepper motor direction pin (pin 49 for wireless)
-const int ltStepPin = 52; //left stepper motor step pin (pin 46 for wireless)
+const int rtStepPin = 44; //right stepper motor step pin (pin 44 for wireless)
+const int rtDirPin = 49;  // right stepper motor direction pin (pin 49 for wireless)
+const int ltStepPin = 46; //left stepper motor step pin (pin 46 for wireless)
 const int ltDirPin = 53;  //left stepper motor direction pin
 const int stepTime = 300; //delay time between high and low on step pin
 
@@ -37,9 +37,9 @@ MultiStepper steppers;//create instance to control multiple steppers at the same
 
 #define stepperEnable 48    //stepper enable pin on stepStick 
 #define enableLED 13        //stepper enabled LED
-#define redLED 5           //red LED for displaying states
-#define grnLED 6         //green LED for displaying states
-#define ylwLED 7        //yellow LED for displaying states
+#define redLED 13           //red LED for displaying states
+#define grnLED 12         //green LED for displaying states
+#define ylwLED 11        //yellow LED for displaying states
 #define stepperEnTrue false //variable for enabling stepper motor
 #define stepperEnFalse true //variable for disabling stepper motor
 
@@ -99,6 +99,8 @@ void setup()
 
 void loop()
 {
+  goToAngle(90);
+  delay(5000);
 
 }
 
