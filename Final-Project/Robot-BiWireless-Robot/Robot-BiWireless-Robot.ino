@@ -160,23 +160,55 @@ void setup() {
 void loop() {
 
   if(transmit){
-    delay(5);
+    radio.openWritingPipe(pipe);//open up writing pipe
+
+    
+    delay(50);
     radio.stopListening();
     // read sensors
     double fDist = irRead(0);
     double bDist = irRead(1);
     double rDist = irRead(2);
     double lDist = irRead(3);
-    Serial.println(fDist);
-    outgoingIRData[0] = fDist;
-    outgoingIRData[1] = bDist;
-    outgoingIRData[2] = rDist;
-    outgoingIRData[3] = lDist;
-    
+    if (fDist>12){
+      outgoingIRData[0] = 5;
+    }
+    else{
+    outgoingIRData[0] = 9;
+    }
+    Serial.println(outgoingIRData[0]);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
+
+    if (bDist>12){
+      outgoingIRData[0] = 6;
+    }
+    else{
+    outgoingIRData[0] = 9;
+    }
+    radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
+    
+    if (rDist>12){
+      outgoingIRData[0] = 7;
+    }
+    else{
+    outgoingIRData[0] = 9;
+    }
+    radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
+    
+    if (lDist>12){
+      outgoingIRData[0] = 8;
+    }
+    else{
+    outgoingIRData[0] = 9;
+    }
+    radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
+    
+    transmit = false;
   }
 
   if (!transmit) {
+    radio.openReadingPipe(1, pipe);//open up reading pipe
+    radio.startListening();//start listening for data;
     while (radio.available()) {
       radio.read(&incoming, 1);
 
@@ -201,7 +233,9 @@ void loop() {
 
         if(incoming[0] == 1) //if we get a 1
         {
-          Serial.println("Got a 1 (S)");
+//          Serial.println("Got a 1 (S)");
+          Serial.println("Got a 1");
+          transmit = true;
         }
         if(incoming[0] == 2) //if we get a 1
         {
@@ -235,7 +269,7 @@ void loop() {
           stop();
         }
 
-
+        //****** Localization ******\\
         
         
         delay(100);

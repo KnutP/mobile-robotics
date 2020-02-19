@@ -59,6 +59,7 @@ char receivedChars[numChars]; // an array to store the received data
 char receivedChar;
 
 boolean newData = false;
+int count = 0;
 
 String slrt = "";
 
@@ -85,24 +86,43 @@ void setup() {
 
 void loop() {
   if (transmit) {
+    radio.openWritingPipe(pipe);//open up writing pipe
     readSerial();
     
     if (data[0] > 0) {
-      Serial.println(data[0]);
+      radio.stopListening();
+//      Serial.println(data[0]);
       radio.write(data, sizeof(data));
+
+    
+      if(data[0] == 1){
+        transmit = false;
+      }
+      
       data[0] = 0;
-      Serial.println("Sending data");
     }
+
 
   }
   
   else if (!transmit) {
+    radio.openReadingPipe(1, pipe);//open up reading pipe
+    radio.startListening();//start listening for data;
+
     while (radio.available()) {
       radio.read(&incoming, 1);
+
+//      Serial.println(count);
       
       if (incoming[0] > 0) {
         Serial.println(incoming[0]);
+        count++;
       }
+    }
+
+    if(count > 3){
+      transmit = true;
+      count = 0;
     }
 
     

@@ -95,8 +95,9 @@ void setup()
 void loop(){
 
 //  smartWander();
-  goalHoming(72, 0);
-  delay(10000);
+//  goalHoming(72, 0);
+//  delay(10000);
+Serial.println(irRead(3));
 }
 
 /* randomWander randomly decides to either drive or turn, then executes the
@@ -125,7 +126,7 @@ void smartWander(){
   
   // while the robot sees something, run the shyKid behavior to avoid the obstacle
   while(irRead(0) < 15 || irRead(1) < 15 || irRead(2) < 15 || irRead(3) < 15){
-    shyKid()
+    shyKid();
   }
 
   // if the robot does not see anything, then randomly wander

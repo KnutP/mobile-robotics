@@ -70,6 +70,10 @@ void setup() {
   cp5.addTextfield("textInputPosition").setPosition(100, 550).setSize(200, 40).setAutoClear(false);
   cp5.addBang("SubmitPosition").setPosition(100, 600).setSize(80, 40); 
   
+  // Text input for robot position
+  cp5.addBang("StartLocalization").setPosition(400, 625).setSize(80, 40); 
+  
+  
   //  initialize serial port and set the baud rate to 9600
   myPort = new Serial(this, "COM7", 9600);
   myPort.bufferUntil('\n'); 
@@ -100,17 +104,6 @@ void draw() {
   textFont(font, 20);
   text("Goal:", 25, 475);
   text("Robot:", 25, 575);
-  
-  //val = myPort.readStringUntil('\n');
-  //make sure our data isn't empty before continuing
-  if (val != null) {
-    //trim whitespace and formatting characters (like carriage return)
-    val = trim(val);
-    text(val, 100, 450);
-    println(val);
-    lastText = val;
-  }
-  text(lastText, 100, 450);
     
     
   // update topological map based on clicks
@@ -156,6 +149,13 @@ void draw() {
  
   
 }
+
+/********* Localization *********/
+
+void localize(){
+  
+}
+
 
 /********* Metric Path Planning *********/
 
@@ -234,7 +234,7 @@ void followPath(){
   
   }
   
-  if(robotX == goalX && robotY == goalY){
+  if((robotX == goalX && robotY == goalY) && robotX != -1){
     myPort.write('9');
     myPort.write('\n');
   }
@@ -296,6 +296,36 @@ void SubmitPosition() {
   println(" textInputPosition = " + input);
   robotX = input.charAt(0) - '0';
   robotY = input.charAt(1) - '0';
+}
+
+void StartLocalization() {
+  println("begin localization");
+  beginToLocalize();
+}
+
+
+void beginToLocalize(){
+  
+  myPort.write('1');
+  myPort.write('\n');
+  
+  println("oaihglk");
+  
+  delay(5000);
+  while(true){
+    
+  
+  val = myPort.readStringUntil('\n');
+  //make sure our data isn't empty before continuing
+  if (val != null) {
+    //trim whitespace and formatting characters (like carriage return)
+    val = trim(val);
+    text(val, 100, 450);
+    println(val);
+    lastText = val;
+  }
+  
+  }
 }
 
 
