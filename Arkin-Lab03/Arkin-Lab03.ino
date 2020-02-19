@@ -115,7 +115,16 @@ void setup()
 
 void loop(){
   
-  wallFollow();
+//  wallFollow();
+  Serial.print("Front ");
+  Serial.println(irRead(0));
+  Serial.print("Back ");
+  Serial.println(irRead(1));
+  Serial.print("Right ");
+  Serial.println(irRead(2));
+  Serial.print("Left ");
+  Serial.println(irRead(3));
+  delay(3000);
   
 }
 

@@ -58,7 +58,7 @@ uint8_t incoming[1];                        //variable to hold receive data
 uint8_t state[] = {0, 0};               //variable to hold receive data position
 uint8_t mapDat[4][4];                   //variable to hold receive data MAP
 uint8_t lastSend;                      // Store last send time
-uint8_t metricIncoming[9] = {99,99,99,99,99,99,99,99,99};
+uint8_t metricIncoming[9] = {99, 99, 99, 99, 99, 99, 99, 99, 99};
 int metricIncomingIndex = 0;
 
 uint8_t outgoingIRData[1];
@@ -135,7 +135,7 @@ void setup() {
   digitalWrite(stepperEnable, stepperEnTrue);//turns on the stepper motor driver
 
   Serial.begin(baud_rate);//start serial communication
-  
+
   radio.begin();//start radio
   radio.setChannel(team_channel);//set the transmit and receive channels to avoid interference
   if (transmit) {
@@ -150,19 +150,19 @@ void setup() {
     Serial.println("....Starting nRF24L01 Receive.....");
     Serial.println("***********************************");
   }
-  
+
 
   // NEW STUFF to be rid of once we have stuff to send
   pinMode(ledPin, OUTPUT); // Set pin as OUTPUT
-  
+
 }
 
 void loop() {
 
-  if(transmit){
+  if (transmit) {
     radio.openWritingPipe(pipe);//open up writing pipe
 
-    
+
     delay(50);
     radio.stopListening();
     // read sensors
@@ -170,39 +170,47 @@ void loop() {
     double bDist = irRead(1);
     double rDist = irRead(2);
     double lDist = irRead(3);
-    if (fDist>12){
+    if (fDist > 12) {
       outgoingIRData[0] = 5;
     }
-    else{
-    outgoingIRData[0] = 9;
+    else {
+      outgoingIRData[0] = 9;
     }
-    Serial.println(outgoingIRData[0]);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
+    Serial.println(outgoingIRData[0]);
 
-    if (bDist>12){
+    if (bDist > 12) {
       outgoingIRData[0] = 6;
     }
-    else{
-    outgoingIRData[0] = 9;
+    else {
+      outgoingIRData[0] = 9;
     }
+    delay(250);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
-    
-    if (rDist>12){
+    Serial.println(outgoingIRData[0]);
+
+    if (rDist > 12) {
       outgoingIRData[0] = 7;
+
     }
-    else{
-    outgoingIRData[0] = 9;
+    else {
+      outgoingIRData[0] = 9;
     }
+    delay(250);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
-    
-    if (lDist>12){
+    Serial.println(outgoingIRData[0]);
+
+    if (lDist > 12) {
       outgoingIRData[0] = 8;
     }
-    else{
-    outgoingIRData[0] = 9;
+    else {
+      outgoingIRData[0] = 9;
+
     }
+    delay(250);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
-    
+    Serial.println(outgoingIRData[0]);
+
     transmit = false;
   }
 
@@ -212,174 +220,174 @@ void loop() {
     while (radio.available()) {
       radio.read(&incoming, 1);
 
-      if(metricIncomingIndex != 9){
+      if (metricIncomingIndex != 9) {
         metricIncoming[metricIncomingIndex] = incoming[0];
         metricIncomingIndex += 1;
       }
-      if(incoming[0] == 9){
+      if (incoming[0] == 9) {
         driveMetricPath();
         metricIncomingIndex = 0;
       }
 
-      Serial.println(incoming[0]);
-      
+      //      Serial.println(incoming[0]);
+
       if (incoming[0] > 0) {
-        
+
 
         ledState = !ledState; //flip the ledState
-        digitalWrite(ledPin, ledState); 
+        digitalWrite(ledPin, ledState);
 
         //****** Topological ******\\
 
-        if(incoming[0] == 1) //if we get a 1
+        if (incoming[0] == 1) //if we get a 1
         {
-//          Serial.println("Got a 1 (S)");
-          Serial.println("Got a 1");
+          //          Serial.println("Got a 1 (S)");
+          //          Serial.println("Got a 1");
           transmit = true;
         }
-        if(incoming[0] == 2) //if we get a 1
+        if (incoming[0] == 2) //if we get a 1
         {
-          Serial.println("Got a 2 (L)");
-          while (irRead(3)<15){
-           rightWallFollow();
+          //          Serial.println("Got a 2 (L)");
+          while (irRead(3) < 15) {
+            rightWallFollow();
           }
-            forward(5);
-            goToAngle(90);
-            forward(15);
-            delay(300);
+          forward(5);
+          goToAngle(90);
+          forward(15);
+          delay(300);
         }
-        if(incoming[0] == 3) //if we get a 1
+        if (incoming[0] == 3) //if we get a 1
         {
-          Serial.println("Got a 3 (R)");
-          while (irRead(2)<15){
+          //          Serial.println("Got a 3 (R)");
+          while (irRead(2) < 15) {
             leftWallFollow();
-            
+
           }
-            forward(5);
-            goToAngle(-90);
-            forward(15);
-            delay(300);
+          forward(5);
+          goToAngle(-90);
+          forward(15);
+          delay(300);
         }
-        if(incoming[0] == 4) //if we get a 1
+        if (incoming[0] == 4) //if we get a 1
         {
-          Serial.println("Got a 4 (T)");
-          while(irRead(0) > 6){
-          rightWallFollow();
+          //          Serial.println("Got a 4 (T)");
+          while (irRead(0) > 6) {
+            rightWallFollow();
           }
           stop();
         }
 
         //****** Localization ******\\
-        
-        
+
+
         delay(100);
       }
     }//end while
 
-    
+
   }
   delay(100);//wait so the data is readable
 }
 
 
-void driveMetricPath(){
+void driveMetricPath() {
   char current;
 
-  for(int i = 0; i < 9; i++){
+  for (int i = 0; i < 9; i++) {
     current = metricIncoming[i];
-    
-      if(current == 5) //if we get a 5
-        {
-          Serial.println("got a 5 (N)");
-          turnToNorth();
-          forward(18);
-        }
-      if(current == 6) //if we get a 6
-        {
-          Serial.println("got a 6 (S)");
-          turnToSouth();
-          forward(18);
-        }
-      if(current == 7) //if we get a 7
-        {
-          Serial.println("got a 7 (E)");
-          turnToEast();
-          forward(18);
-        }
-      if(current == 8) //if we get an 8
-        {
-          Serial.println("got an 8 (W)");
-          turnToWest();
-          forward(18);
-        }
 
-      metricIncoming[i] = 99;
-    
-  } 
+    if (current == 5) //if we get a 5
+    {
+      //      Serial.println("got a 5 (N)");
+      turnToNorth();
+      forward(17);
+    }
+    if (current == 6) //if we get a 6
+    {
+      //      Serial.println("got a 6 (S)");
+      turnToSouth();
+      forward(17);
+    }
+    if (current == 7) //if we get a 7
+    {
+      //      Serial.println("got a 7 (E)");
+      turnToEast();
+      forward(17);
+    }
+    if (current == 8) //if we get an 8
+    {
+      //      Serial.println("got an 8 (W)");
+      turnToWest();
+      forward(17);
+    }
+
+    metricIncoming[i] = 99;
+
+  }
 }
 
-void turnToNorth(){
+void turnToNorth() {
 
-  if(robotDirection == N){
+  if (robotDirection == N) {
     // do nothing
-  } else if (robotDirection == S){
+  } else if (robotDirection == S) {
     goToAngle(180);
-  } else if (robotDirection == E){
+  } else if (robotDirection == E) {
     goToAngle(90);
-  } else if (robotDirection == W){
+  } else if (robotDirection == W) {
     goToAngle(-90);
   }
 
   robotDirection = N;
-  
+
 }
 
-void turnToSouth(){
+void turnToSouth() {
 
-  if(robotDirection == N){
+  if (robotDirection == N) {
     goToAngle(180);
-  } else if (robotDirection == S){
+  } else if (robotDirection == S) {
     // do nothing
-  } else if (robotDirection == E){
+  } else if (robotDirection == E) {
     goToAngle(-90);
-  } else if (robotDirection == W){
+  } else if (robotDirection == W) {
     goToAngle(90);
   }
 
   robotDirection = S;
-  
+
 }
 
-void turnToEast(){
+void turnToEast() {
 
-  if(robotDirection == N){
+  if (robotDirection == N) {
     goToAngle(-90);
-  } else if (robotDirection == S){
+  } else if (robotDirection == S) {
     goToAngle(90);
-  } else if (robotDirection == E){
+  } else if (robotDirection == E) {
     // do nothing
-  } else if (robotDirection == W){
+  } else if (robotDirection == W) {
     goToAngle(-180);
   }
 
   robotDirection = E;
-  
+
 }
 
-void turnToWest(){
+void turnToWest() {
 
-  if(robotDirection == N){
+  if (robotDirection == N) {
     goToAngle(90);
-  } else if (robotDirection == S){
+  } else if (robotDirection == S) {
     goToAngle(-90);
-  } else if (robotDirection == E){
+  } else if (robotDirection == E) {
     goToAngle(180);
-  } else if (robotDirection == W){
+  } else if (robotDirection == W) {
     // do nothing
   }
 
   robotDirection = W;
-  
+
 }
 
 
@@ -508,15 +516,15 @@ void stop() {
   stepperLeft.stop();//stop left motor
 }
 
-/* 
- *  Follow a wall on the right side of the robot using PD control
- */
-void rightWallFollow(){
+/*
+    Follow a wall on the right side of the robot using PD control
+*/
+void rightWallFollow() {
 
   digitalWrite(redLED, HIGH);
   digitalWrite(grnLED, LOW);
   digitalWrite(ylwLED, HIGH);
-  
+
   updateError();
 
   double kp = 30;
@@ -524,80 +532,80 @@ void rightWallFollow(){
 
   // if we lose the wall, turn toward where it was
   // adjust speed based on distance between robot and wall
-  double rightSpeed = (motorSpeed + kp*rError + kd*drEdt);
+  double rightSpeed = (motorSpeed + kp * rError + kd * drEdt);
   double leftSpeed = motorSpeed;
-  
+
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
-   double beginMillis = millis();
-    while (millis() < beginMillis + 50) {
-      stepperRight.runSpeed();//move right motor
-      stepperLeft.runSpeed();//move left motor
-    }
+  double beginMillis = millis();
+  while (millis() < beginMillis + 50) {
+    stepperRight.runSpeed();//move right motor
+    stepperLeft.runSpeed();//move left motor
+  }
 
 }
 
-void leftWallFollow(){
+void leftWallFollow() {
 
   digitalWrite(redLED, LOW);
   digitalWrite(grnLED, HIGH);
   digitalWrite(ylwLED, HIGH);
-  
+
   updateError();
 
   double kp = 20;
   double kd = 10.0;
 
   // adjust speed based on distance between robot and wall
-  double leftSpeed = (motorSpeed + kp*lError + kd*dlEdt);
+  double leftSpeed = (motorSpeed + kp * lError + kd * dlEdt);
   double rightSpeed = motorSpeed;
 
   stepperRight.setSpeed(rightSpeed);//set right motor speed
   stepperLeft.setSpeed(leftSpeed);//set left motor speed
 
   double beginMillis = millis();
-  while(millis()<beginMillis + 50){
+  while (millis() < beginMillis + 50) {
     stepperRight.runSpeed();//move right motor
-    stepperLeft.runSpeed();//move left motor 
+    stepperLeft.runSpeed();//move left motor
   }
 }
 
 
-void updateError(){
+void updateError() {
 
   double rDist = irRead(2);
   double lDist = irRead(3);
 
-  if(rDist>5){
-    rError = 5-rDist;
+  if (rDist > 5) {
+    rError = 5 - rDist;
   }
-  else if(rDist<5){
-    rError = 5-rDist;
+  else if (rDist < 5) {
+    rError = 5 - rDist;
   }
 
-  if(lDist>5){
-    lError = 5-lDist;
+  if (lDist > 5) {
+    lError = 5 - lDist;
   }
-  else if(lDist<5){
-    lError = 5-lDist;
+  else if (lDist < 5) {
+    lError = 5 - lDist;
   }
 
   updateDerivatives();
-  
+
 }
 
 /* updateDerivatives is a helper function that calculates
- *  the change in error over the change in time
- *  for the left and right sides of the robot since the
- *  last time the function was called.
- */
-double updateDerivatives(){
+    the change in error over the change in time
+    for the left and right sides of the robot since the
+    last time the function was called.
+*/
+double updateDerivatives() {
   currentTime = millis();
 
-  drEdt = (rError-rPrevError)/(currentTime - lastTime);
-  dlEdt = (lError-lPrevError)/(currentTime - lastTime);
-  
+  drEdt = (rError - rPrevError) / (currentTime - lastTime);
+  dlEdt = (lError - lPrevError) / (currentTime - lastTime);
+
   rPrevError = rError;
   lPrevError = lError;
   lastTime = currentTime;

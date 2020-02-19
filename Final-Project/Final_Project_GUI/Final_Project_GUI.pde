@@ -4,6 +4,7 @@ String val;
 boolean firstContact = false;
 PShape[][] map = new PShape[4][4]; 
 PFont font;
+String[] irData = {"9", "9", "9", "9"};
 //int[][] gridLayout = new int[4][4];
 
 //int gridLayout[][] =
@@ -36,7 +37,7 @@ int lastDirection = 1;
 
 int boxWidth = 50;
 String input;
-String lastText = "";
+String lastVal = "";
 int manhattanNumber=0;
 int[][] wavefrontGrid = new int[4][4];
 
@@ -306,10 +307,12 @@ void StartLocalization() {
 
 void beginToLocalize(){
   
+  // request ir sensor data from the robot
   myPort.write('1');
   myPort.write('\n');
   
-  println("oaihglk");
+  
+  //println("oaihglk");
   
   delay(5000);
   while(true){
@@ -322,10 +325,39 @@ void beginToLocalize(){
     val = trim(val);
     text(val, 100, 450);
     println(val);
-    lastText = val;
   }
   
   }
+  
+  //boolean keepReading = true;
+  //int i = 0;
+  //delay(4000);
+  //while(keepReading){   
+  
+  //val = myPort.readStringUntil('\n');
+  //val = trim(val);
+  //if (val != null) {
+  //  println(val);
+    
+  //  if(i < 5){
+      
+  //    irData[i] = val;
+  //    i++;
+  //  }
+  //  //if(i >= 5){
+  //  //  keepReading = false;
+  //  //}
+    
+  // }
+    
+  //}
+  
+  
+  //print(irData[0] +" ");
+  //print(irData[1] +" ");
+  //print(irData[2] +" ");
+  //print(irData[3] +"\n");
+  
 }
 
 

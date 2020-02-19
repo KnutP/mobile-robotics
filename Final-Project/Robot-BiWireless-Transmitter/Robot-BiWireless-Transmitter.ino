@@ -59,11 +59,8 @@ char receivedChars[numChars]; // an array to store the received data
 char receivedChar;
 
 boolean newData = false;
-int count = 0;
 
 String slrt = "";
-
-
 
 void setup() {
   Serial.begin(baud_rate);//start serial communication
@@ -71,15 +68,15 @@ void setup() {
   radio.setChannel(team_channel);//set the transmit and receive channels to avoid interference
   if (transmit) {
     radio.openWritingPipe(pipe);//open up writing pipe
-    Serial.println("***********************************");
-    Serial.println("....Starting nRF24L01 Transmit.....");
-    Serial.println("***********************************");
+//    Serial.println("***********************************");
+//    Serial.println("....Starting nRF24L01 Transmit.....");
+//    Serial.println("***********************************");
   } else {
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();;//start listening for data;
-    Serial.println("***********************************");
-    Serial.println("....Starting nRF24L01 Receive.....");
-    Serial.println("***********************************");
+//    Serial.println("***********************************");
+//    Serial.println("....Starting nRF24L01 Receive.....");
+//    Serial.println("***********************************");
   }
 
 }
@@ -90,11 +87,9 @@ void loop() {
     readSerial();
     
     if (data[0] > 0) {
-      radio.stopListening();
-//      Serial.println(data[0]);
+      Serial.write(data[0]);
       radio.write(data, sizeof(data));
-
-    
+      
       if(data[0] == 1){
         transmit = false;
       }
@@ -109,21 +104,21 @@ void loop() {
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();//start listening for data;
 
-    while (radio.available()) {
-      radio.read(&incoming, 1);
+    int count = 0;
 
-//      Serial.println(count);
+    while (radio.available()) {
+      radio.read(&incoming, sizeof(incoming));
       
       if (incoming[0] > 0) {
         Serial.println(incoming[0]);
+//        Serial.println(count);
         count++;
       }
     }
 
-    if(count > 3){
-      transmit = true;
-      count = 0;
-    }
+//    if(count > 5){
+//      transmit = true;
+//    }
 
     
   }
@@ -133,11 +128,6 @@ void loop() {
 void readSerial() {
   if (Serial.available() > 0) {
     data[0] = Serial.parseInt();
-    
-      Serial.println(data[0]);
-    if (data[0] > 1) {
-      Serial.println(data[0]);
-    }
   }
 }
 
