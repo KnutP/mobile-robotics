@@ -114,6 +114,9 @@ void loop() {
 //        Serial.println(count);
         count++;
       }
+      if(incoming[0] == 0){
+        transmit = true;
+      }
     }
 
 //    if(count > 5){
