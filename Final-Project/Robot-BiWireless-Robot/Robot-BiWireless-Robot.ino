@@ -58,6 +58,8 @@ uint8_t incoming[1];                        //variable to hold receive data
 uint8_t state[] = {0, 0};               //variable to hold receive data position
 uint8_t mapDat[4][4];                   //variable to hold receive data MAP
 uint8_t lastSend;                      // Store last send time
+uint8_t metricIncoming[9] = {99,99,99,99,99,99,99,99,99};
+int metricIncomingIndex = 0;
 
 uint8_t outgoingIRData[1];
 
@@ -178,6 +180,15 @@ void loop() {
     while (radio.available()) {
       radio.read(&incoming, 1);
 
+      if(metricIncomingIndex != 9){
+        metricIncoming[metricIncomingIndex] = incoming[0];
+        metricIncomingIndex += 1;
+      }
+      if(incoming[0] == 9){
+        driveMetricPath();
+        metricIncomingIndex = 0;
+      }
+
       Serial.println(incoming[0]);
       
       if (incoming[0] > 0) {
@@ -224,33 +235,6 @@ void loop() {
           stop();
         }
 
-        //****** Metric ******\\
-
-        if(incoming[0] == 5) //if we get a 5
-        {
-          Serial.println("got a 5 (N)");
-          turnToNorth();
-          forward(15);
-        }
-        if(incoming[0] == 6) //if we get a 6
-        {
-          Serial.println("got a 6 (S)");
-          turnToSouth();
-          forward(15);
-        }
-        if(incoming[0] == 7) //if we get a 7
-        {
-          Serial.println("got a 7 (E)");
-          turnToEast();
-          forward(15);
-        }
-        if(incoming[0] == 8) //if we get an 8
-        {
-          Serial.println("got a 8 (W)");
-          turnToWest();
-          forward(15);
-        }
-
 
         
         
@@ -261,6 +245,43 @@ void loop() {
     
   }
   delay(100);//wait so the data is readable
+}
+
+
+void driveMetricPath(){
+  char current;
+
+  for(int i = 0; i < 9; i++){
+    current = metricIncoming[i];
+    
+      if(current == 5) //if we get a 5
+        {
+          Serial.println("got a 5 (N)");
+          turnToNorth();
+          forward(18);
+        }
+      if(current == 6) //if we get a 6
+        {
+          Serial.println("got a 6 (S)");
+          turnToSouth();
+          forward(18);
+        }
+      if(current == 7) //if we get a 7
+        {
+          Serial.println("got a 7 (E)");
+          turnToEast();
+          forward(18);
+        }
+      if(current == 8) //if we get an 8
+        {
+          Serial.println("got an 8 (W)");
+          turnToWest();
+          forward(18);
+        }
+
+      metricIncoming[i] = 99;
+    
+  } 
 }
 
 void turnToNorth(){
