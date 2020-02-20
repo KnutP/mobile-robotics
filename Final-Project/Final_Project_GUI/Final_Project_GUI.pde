@@ -16,13 +16,22 @@ String[] irData = {"9", "9", "9", "9"};
 //      {14, 15, 15, 14}
 //    };
     
+//int gridLayout[][] =
+//    {
+//      // Topological
+//      { 9,  1,  7, 11},
+//      {14,  8,  5,  2},
+//      { 9,  6,  9,  6},
+//      {14, 13,  6, 15}
+//    };
+
 int gridLayout[][] =
     {
-      // Topological
-      { 9,  1,  7, 11},
-      {14,  8,  5,  2},
-      { 9,  6,  9,  6},
-      {14, 13,  6, 15}
+      // Localization
+      { 9,  5,  1,  7},
+      {10, 15, 10, 15},
+      {10, 15, 10, 15},
+      {14, 15, 14, 15}
     };
     
 
@@ -31,6 +40,8 @@ int gridXOffset = 250;
 int gridYOffset = 100;
 int robotX = -1;
 int robotY  = -1;
+int robot2X = -10;
+int robot2Y  = -10;
 int goalX = -1;
 int goalY = -1;
 int lastDirection = 1;
@@ -41,6 +52,19 @@ String lastVal = "";
 int manhattanNumber=0;
 int[][] wavefrontGrid = new int[4][4];
 
+
+int possibleCoords1[][] =
+    {
+      
+      { -1,  -1,  -1, -1},
+      {-1,  -1,  -1,  -1},
+    };
+int possibleCoords2[][] =
+    {
+      
+      { -1,  -1,  -1, -1},
+      {-1,  -1,  -1,  -1},
+    };
 
 import controlP5.*;
 ControlP5 cp5;
@@ -96,6 +120,7 @@ void draw() {
   
   displayMap(map);
   drawRobot();
+  drawStartRobot();
   
   fill(0);
   textFont(font, 32);
@@ -148,12 +173,6 @@ void draw() {
  // if we have a robot position and a goal, then go to the goal
  followPath();
  
-  
-}
-
-/********* Localization *********/
-
-void localize(){
   
 }
 
@@ -299,6 +318,10 @@ void SubmitPosition() {
   robotY = input.charAt(1) - '0';
 }
 
+
+
+/********* Localization *********/
+
 void StartLocalization() {
   println("begin localization");
   beginToLocalize();
@@ -307,57 +330,200 @@ void StartLocalization() {
 
 void beginToLocalize(){
   
+  int obstacleNum = getObstacleNumFromRobot();  
+  findPositionOptions(obstacleNum);
+  
+  boolean localized = false;
+  int iteration = 0;
+  
+  while(!localized){
+    
+    myPort.write('5');
+    println("moved north");
+    myPort.write('\n');
+    myPort.write('9');
+    myPort.write('\n');
+    
+    possibleCoords1[0][iteration+1] = possibleCoords1[0][iteration]-1;
+    possibleCoords1[1][iteration+1] = possibleCoords1[1][iteration];
+    possibleCoords2[0][iteration+1] = possibleCoords2[0][iteration]-1;
+    possibleCoords2[1][iteration+1] = possibleCoords2[1][iteration];
+    
+    delay(3000);
+    obstacleNum = getObstacleNumFromRobot();
+    
+    // check 1st position option
+    int i1 = possibleCoords1[0][iteration+1];
+    int j1 = possibleCoords1[1][iteration+1];
+    int i2 = possibleCoords2[0][iteration+1];
+    int j2 = possibleCoords2[1][iteration+1];
+    
+    println(i1);
+    println(j1);
+    println(i2);
+    println(j2);
+    
+    
+    if(obstacleNum != gridLayout[i1][j1]){
+      robotX = i2;
+      robotY = j2;
+      robot2X = possibleCoords2[0][0];
+      robot2Y = possibleCoords2[1][0];
+      localized = true;
+    }
+    
+    // check 2nd position option
+    
+    if(obstacleNum != gridLayout[i2][j2]){
+      robotX = i1;
+      robotY = j1;
+      robot2X = possibleCoords1[0][0];
+      robot2Y = possibleCoords1[1][0];
+      localized = true;
+    }
+
+    iteration++;
+  }
+  println("localized");
+  
+  
+}
+
+int getObstacleNumFromRobot(){
+  
   // request ir sensor data from the robot
   myPort.write('1');
   myPort.write('\n');
   
+  boolean keepReading = true;
+  int i = 0;
+  delay(4000);
   
-  //println("oaihglk");
-  
-  delay(5000);
-  while(true){
-    
+  while(keepReading){   
   
   val = myPort.readStringUntil('\n');
-  //make sure our data isn't empty before continuing
+  val = trim(val);
   if (val != null) {
-    //trim whitespace and formatting characters (like carriage return)
-    val = trim(val);
-    text(val, 100, 450);
     println(val);
-  }
-  
-  }
-  
-  //boolean keepReading = true;
-  //int i = 0;
-  //delay(4000);
-  //while(keepReading){   
-  
-  //val = myPort.readStringUntil('\n');
-  //val = trim(val);
-  //if (val != null) {
-  //  println(val);
     
-  //  if(i < 5){
+    if(i < 4){
       
-  //    irData[i] = val;
-  //    i++;
-  //  }
-  //  //if(i >= 5){
-  //  //  keepReading = false;
-  //  //}
+      irData[i] = val;
+      i++;
+    }
+    if(i >= 4){
+      keepReading = false;
+    }
     
-  // }
+   }
     
-  //}
+  }
+  
+  int obstacleNum = getObstacleNumber();
+  print("Obstacle Number: ");
+  println(obstacleNum);
+  return obstacleNum;
+  
+}
+
+
+void findPositionOptions(int obstacleNum){
+  for(int i =0; i < 4; i++){
+    for(int j = 0; j < 4; j++){
+      
+       if (gridLayout[i][j] == obstacleNum){
+         println("found option");
+         
+        if(possibleCoords1[0][0] > -1 && possibleCoords1[1][0] > -1){
+          possibleCoords2[0][0] = i;
+          possibleCoords2[1][0] =  j;
+        }
+        else{
+          possibleCoords1[0][0] = i;
+          possibleCoords1[1][0] =  j;
+        }
+        
+      }
+      
+    }
+  }
+  
+  println(possibleCoords2[0][0]);
+  println(possibleCoords2[1][0]);
+
+  println(possibleCoords1[0][0]);
+  println(possibleCoords1[1][0]);
   
   
-  //print(irData[0] +" ");
-  //print(irData[1] +" ");
-  //print(irData[2] +" ");
-  //print(irData[3] +"\n");
+}
+
+int getObstacleNumber(){
+  int obstacleNum = 15;
+  boolean frontOpen = false;
+  boolean backOpen = false;
+  boolean leftOpen = false;
+  boolean rightOpen = false;
+    
+  if(!irData[0].equals("9")){
+    frontOpen = true;
+  }
+  if(!irData[1].equals("9")){
+    backOpen = true;
+  }
+  if(!irData[2].equals("9")){
+    leftOpen = true;
+  }
+  if(!irData[3].equals("9")){
+    rightOpen = true;
+  }
   
+  if(frontOpen && backOpen && leftOpen && rightOpen){
+    obstacleNum = 0;
+  }
+  else if(!frontOpen && backOpen && leftOpen && rightOpen){
+    obstacleNum = 1;
+  }
+  else if(frontOpen && backOpen && leftOpen && !rightOpen){
+    obstacleNum = 2;
+  }
+  else if(!frontOpen && backOpen && leftOpen && !rightOpen){
+    obstacleNum = 3;
+  }
+  else if(frontOpen && !backOpen && leftOpen && rightOpen){
+    obstacleNum = 4;
+  }
+  else if(!frontOpen && !backOpen && leftOpen && rightOpen){
+    obstacleNum = 5;
+  }
+  else if(frontOpen && !backOpen && leftOpen && !rightOpen){
+    obstacleNum = 6;
+  }
+  else if(!frontOpen && !backOpen && leftOpen && !rightOpen){
+    obstacleNum = 7;
+  }
+  else if(frontOpen && backOpen && !leftOpen && rightOpen){
+    obstacleNum = 8;
+  }
+  else if(!frontOpen && backOpen && !leftOpen && rightOpen){
+    obstacleNum = 9;
+  }
+  else if(frontOpen && backOpen && !leftOpen && !rightOpen){
+    obstacleNum = 10;
+  }
+  else if(!frontOpen && backOpen && !leftOpen && !rightOpen){
+    obstacleNum = 11;
+  }
+  else if(frontOpen && !backOpen && !leftOpen && rightOpen){
+    obstacleNum = 12;
+  }
+  else if(!frontOpen && !backOpen && !leftOpen && rightOpen){
+    obstacleNum = 13;
+  }
+  else if(frontOpen && !backOpen && !leftOpen && !rightOpen){
+    obstacleNum = 14;
+  }
+  
+  return obstacleNum;
 }
 
 
@@ -413,6 +579,12 @@ void Submit() {
 void drawRobot(){
   
   circle(gridXOffset+(robotX*50)+boxWidth/2,gridYOffset+(robotY*50)+boxWidth/2, 30);
+  
+}
+
+void drawStartRobot(){
+  
+  circle(gridXOffset+(robot2X*50)+boxWidth/2,gridYOffset+(robot2Y*50)+boxWidth/2, 30);
   
 }
 

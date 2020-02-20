@@ -57,6 +57,7 @@ uint8_t lastSend;                      // Store last send time
 const byte numChars = 32;
 char receivedChars[numChars]; // an array to store the received data
 char receivedChar;
+int count = 0;
 
 boolean newData = false;
 
@@ -87,7 +88,6 @@ void loop() {
     readSerial();
     
     if (data[0] > 0) {
-      Serial.write(data[0]);
       radio.write(data, sizeof(data));
       
       if(data[0] == 1){
@@ -104,24 +104,21 @@ void loop() {
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();//start listening for data;
 
-    int count = 0;
+    
 
     while (radio.available()) {
       radio.read(&incoming, sizeof(incoming));
       
       if (incoming[0] > 0) {
         Serial.println(incoming[0]);
-//        Serial.println(count);
         count++;
       }
-      if(incoming[0] == 0){
+      if(count == 4){
+        radio.stopListening();//start listening for data;
+        count = 0;
         transmit = true;
       }
     }
-
-//    if(count > 5){
-//      transmit = true;
-//    }
 
     
   }
@@ -133,11 +130,3 @@ void readSerial() {
     data[0] = Serial.parseInt();
   }
 }
-
-//
-//void establishContact() {
-//  while (Serial.available() <= 0) {
-//  Serial.println("A");   // send a capital A
-//  delay(300);
-//  }
-//}
