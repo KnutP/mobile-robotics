@@ -6,6 +6,7 @@ PShape[][] map = new PShape[4][4];
 PFont font;
 String[] irData = {"9", "9", "9", "9"};
 int iterationCount = 0;
+
 //int[][] gridLayout = new int[4][4];
 
 //int gridLayout[][] =
@@ -26,13 +27,22 @@ int iterationCount = 0;
 //      {14, 13,  6, 15}
 //    };
 
+//int gridLayout[][] =
+//    {
+//      // Localization
+//      { 9,  5,  1,  7},
+//      {10, 15, 10, 15},
+//      {10, 15, 10, 15},
+//      {14, 15, 14, 15}
+//    };
+    
 int gridLayout[][] =
     {
       // Localization
-      { 9,  5,  1,  7},
-      {10, 15, 10, 15},
-      {10, 15, 10, 15},
-      {14, 15, 14, 15}
+      {15, 15, 15, 15},
+      {15, 15, 15, 15},
+      {15, 15, 15, 15},
+      {15, 15, 15, 15}
     };
     
 
@@ -96,8 +106,11 @@ void setup() {
   cp5.addTextfield("textInputPosition").setPosition(100, 550).setSize(200, 40).setAutoClear(false);
   cp5.addBang("SubmitPosition").setPosition(100, 600).setSize(80, 40); 
   
-  // Text input for robot position
-  cp5.addBang("StartLocalization").setPosition(400, 625).setSize(80, 40); 
+  // Text input for starting localization
+  cp5.addBang("StartLocalization").setPosition(400, 625).setSize(80, 40);
+  
+  // Text input for mapmaking
+  cp5.addBang("StartMapmaking").setPosition(400, 675).setSize(80, 40); 
   
   
   //  initialize serial port and set the baud rate to 9600
@@ -116,6 +129,7 @@ void setup() {
 }
 
 void draw() {
+  println("drawing");
   
   background(255); // clear the screen
   
@@ -176,6 +190,195 @@ void draw() {
  
   
 }
+
+/********* Map Making *********/
+
+void StartMapmaking(){
+  robotX = 3;
+  robotY = 3;
+  
+  
+  while(robotX != 0 || robotY != 3){
+    println("in the loop");
+    redraw();
+    
+    //background(255); // clear the screen
+    //displayMap(map);
+    //drawRobot();
+    
+    gridLayout[robotX][robotY] = getObstacleNumFromRobot();
+  
+  
+    int options[]={99,99,99,99};
+    int obstacleNum = gridLayout[robotX][robotY];
+   
+    if(canMoveNorth(obstacleNum)){
+      println("can move north 1");
+      if(robotY-1 >0){
+        println("stuff ahead");
+        if(gridLayout[robotX][robotY-1] == 15){
+          options[0] = 1;
+          println("can move north");
+        } 
+      } 
+    }
+    if(canMoveSouth(obstacleNum)){
+      if(robotY+1 < 4){
+        if(gridLayout[robotX][robotY+1] == 15){
+          options[1] = 1;
+          println("can move south");
+        } 
+      } 
+    }
+    if(canMoveEast(obstacleNum)){
+       if(robotX+1 < 4){
+        if(gridLayout[robotX+1][robotY] == 15){
+          options[2] = 1;
+          println("can move east");
+        } 
+      }
+    }
+    if(canMoveWest(obstacleNum)){
+       if(robotX-1 > 0){
+        if(gridLayout[robotX-1][robotY] == 15){
+          options[3] = 1;
+          println("can move west");
+        } 
+      }
+    }
+    
+
+    // if we can move east and we haven't been to the square already, go there
+    if(options[2]!=99){
+
+      // turn to east
+      myPort.write('7');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+      
+      // drive forward
+      myPort.write('4');
+      myPort.write('\n');
+      println("moved east");
+      robotX += 1;
+      
+      // turn to north
+      myPort.write('5');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+      
+    } 
+    // if we can move west and we haven't been to the square already, go there
+    else if(options[3]!=99){
+      
+      // turn to west
+      myPort.write('8');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+      
+      // drive forward
+      myPort.write('4');
+      myPort.write('\n');
+      println("moved west");
+      robotX += -1;
+      
+      // turn to north
+      myPort.write('5');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+      
+    } 
+    // if we can move north and we haven't been to the square already, go there
+    else if(options[0]!=99){
+      
+      // turn to north
+      myPort.write('5');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+      
+      // drive forward
+      myPort.write('4');
+      myPort.write('\n');
+      println("moved north");
+      robotY += -1;
+      
+    }
+    // if we can move south and we haven't been to the square already, go there
+    else if(options[1]!=99){
+
+      // turn to south
+      myPort.write('6');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+      
+      // drive forward
+      myPort.write('4');
+      myPort.write('\n');
+      println("moved south");
+      robotY += 1;
+      
+      // turn to north
+      myPort.write('5');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+      
+    }
+    
+    else if(canMoveEast(obstacleNum)){
+            
+      // turn to west
+      myPort.write('8');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+      
+      // drive forward
+      myPort.write('4');  
+      myPort.write('\n');
+      println("moved west");
+      robotX += -1;
+      
+      // turn to north
+      myPort.write('5');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+    } 
+    else if(canMoveWest(obstacleNum)){
+      // turn to west
+      myPort.write('8');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+      
+      // drive forward
+      myPort.write('4');
+      myPort.write('\n');
+      println("moved west");
+      robotX += -1;
+      
+      // turn to north
+      myPort.write('5');
+      myPort.write('\n');
+      myPort.write('9');
+      myPort.write('\n');
+    } 
+  
+  
+  
+  }
+  println("broke");
+  
+ 
+}
+
 
 
 /********* Metric Path Planning *********/
@@ -407,12 +610,14 @@ int getObstacleNumFromRobot(){
 
   int i = 0;
   delay(5000);
+  println("getting obstacle num");
   
   while(keepReading){
     
   
   val = myPort.readStringUntil('\n');
   val = trim(val);
+  
   if (val != null) {
     
     println(val);
@@ -421,11 +626,11 @@ int getObstacleNumFromRobot(){
       
       irData[i] = val;
       i++;
-      if(i==3 && iterationCount == 3){
-        keepReading = false;
-        irData[0] = "9";
-        println("break");
-      }
+      //if(i==3 && iterationCount == 3){
+      //  keepReading = false;
+      //  irData[0] = "9";
+      //  println("break");
+      //}
     }
     if(i >= 4){
       // keep reading from the serial until we have 4 values
@@ -501,10 +706,10 @@ int getObstacleNumber(){
     backOpen = true;
   }
   if(!irData[2].equals("9")){
-    leftOpen = true;
+    rightOpen = true;
   }
   if(!irData[3].equals("9")){
-    rightOpen = true;
+    leftOpen = true;
   }
   
   if(frontOpen && backOpen && leftOpen && rightOpen){

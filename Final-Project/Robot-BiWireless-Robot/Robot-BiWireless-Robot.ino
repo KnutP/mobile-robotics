@@ -160,10 +160,7 @@ void loop() {
 
   if (transmit) {
     radio.openWritingPipe(pipe);//open up writing pipe
-
-
-    delay(50);
-    radio.stopListening();
+    
     delay(150);
     // read sensors
     double fDist = irRead(0);
@@ -251,6 +248,7 @@ void loop() {
         {
           //          Serial.println("Got a 1 (S)");
           //          Serial.println("Got a 1");
+          radio.stopListening();
           transmit = true;
         }
         if (incoming[0] == 2) //if we get a 1
@@ -279,10 +277,15 @@ void loop() {
         if (incoming[0] == 4) //if we get a 1
         {
           //          Serial.println("Got a 4 (T)");
-          while (irRead(0) > 6) {
-            rightWallFollow();
-          }
-          stop();
+          // Uncomment for topological path following
+//          while (irRead(0) > 6) {
+//            rightWallFollow();
+//          }
+//          stop();
+
+          // Uncomment for map making
+          forward(17);
+          Serial.println("moved forward");
         }
 
         //****** Localization ******\\
@@ -306,27 +309,27 @@ void driveMetricPath() {
 
     if (current == 5) //if we get a 5
     {
-      //      Serial.println("got a 5 (N)");
+            Serial.println("got a 5 (N)");
       turnToNorth();
-      forward(17);
+//      forward(17);
     }
     if (current == 6) //if we get a 6
     {
-      //      Serial.println("got a 6 (S)");
+            Serial.println("got a 6 (S)");
       turnToSouth();
-      forward(17);
+//      forward(17);
     }
     if (current == 7) //if we get a 7
     {
-      //      Serial.println("got a 7 (E)");
+            Serial.println("got a 7 (E)");
       turnToEast();
-      forward(17);
+//      forward(17);
     }
     if (current == 8) //if we get an 8
     {
-      //      Serial.println("got an 8 (W)");
+            Serial.println("got an 8 (W)");
       turnToWest();
-      forward(17);
+//      forward(17);
     }
 
     metricIncoming[i] = 99;
