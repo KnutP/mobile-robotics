@@ -160,8 +160,12 @@ void loop() {
 
   if (transmit) {
     radio.openWritingPipe(pipe);//open up writing pipe
-    
+
+
+    delay(50);
+    radio.stopListening();
     delay(150);
+    
     // read sensors
     double fDist = irRead(0);
     double bDist = irRead(1);
@@ -248,7 +252,6 @@ void loop() {
         {
           //          Serial.println("Got a 1 (S)");
           //          Serial.println("Got a 1");
-          radio.stopListening();
           transmit = true;
         }
         if (incoming[0] == 2) //if we get a 1

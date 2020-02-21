@@ -129,7 +129,7 @@ void setup() {
 }
 
 void draw() {
-  println("drawing");
+  //println("drawing");
   
   background(255); // clear the screen
   
@@ -196,21 +196,22 @@ void draw() {
 void StartMapmaking(){
   robotX = 3;
   robotY = 3;
-  
+  //int iterator =0;
   
   while(robotX != 0 || robotY != 3){
+    //while(iterator < 2){
+    //iterator++;
     println("in the loop");
-    redraw();
     
     //background(255); // clear the screen
     //displayMap(map);
     //drawRobot();
     
-    gridLayout[robotX][robotY] = getObstacleNumFromRobot();
+    gridLayout[robotY][robotX] = getObstacleNumFromRobot();
   
   
     int options[]={99,99,99,99};
-    int obstacleNum = gridLayout[robotX][robotY];
+    int obstacleNum = gridLayout[robotY][robotX];
    
     if(canMoveNorth(obstacleNum)){
       println("can move north 1");
