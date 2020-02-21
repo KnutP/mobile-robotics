@@ -107,7 +107,6 @@ double drEdt = 0;
 double dlEdt = 0;
 
 
-
 void setup() {
   pinMode(rtStepPin, OUTPUT);//sets pin as output
   pinMode(rtDirPin, OUTPUT);//sets pin as output
@@ -165,13 +164,13 @@ void loop() {
 
     delay(50);
     radio.stopListening();
-    delay(250);
+    delay(150);
     // read sensors
     double fDist = irRead(0);
     double bDist = irRead(1);
     double rDist = irRead(2);
     double lDist = irRead(3);
-    delay(250);
+    delay(150);
     
     if (fDist > 12) {
       outgoingIRData[0] = 5;
@@ -179,9 +178,10 @@ void loop() {
     else {
       outgoingIRData[0] = 9;
     }
-    delay(250);
+
+    delay(150);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
-//    Serial.println(outgoingIRData[0]);
+    Serial.println(outgoingIRData[0]);
 
     if (bDist > 12) {
       outgoingIRData[0] = 6;
@@ -189,9 +189,9 @@ void loop() {
     else {
       outgoingIRData[0] = 9;
     }
-    delay(250);
+    delay(150);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
-//    Serial.println(outgoingIRData[0]);
+    Serial.println(outgoingIRData[0]);
 
     if (rDist > 12) {
       outgoingIRData[0] = 7;
@@ -200,9 +200,9 @@ void loop() {
     else {
       outgoingIRData[0] = 9;
     }
-    delay(250);
+    delay(150);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
-//    Serial.println(outgoingIRData[0]);
+    Serial.println(outgoingIRData[0]);
 
     if (lDist > 12) {
       outgoingIRData[0] = 8;
@@ -211,9 +211,9 @@ void loop() {
       outgoingIRData[0] = 9;
 
     }
-    delay(250);
+    delay(150);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
-//    Serial.println(outgoingIRData[0]);
+    Serial.println(outgoingIRData[0]);
 
     transmit = false;
   }
@@ -223,7 +223,7 @@ void loop() {
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();//start listening for data;
 
-    delay(500);
+    //delay(500);
     
     while (radio.available()) {
      
@@ -232,6 +232,7 @@ void loop() {
       if (metricIncomingIndex != 9) {
         metricIncoming[metricIncomingIndex] = incoming[0];
         metricIncomingIndex += 1;
+        Serial.println("in metric");
       }
       if (incoming[0] == 9) {
         driveMetricPath();

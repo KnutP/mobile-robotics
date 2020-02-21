@@ -5,6 +5,7 @@ boolean firstContact = false;
 PShape[][] map = new PShape[4][4]; 
 PFont font;
 String[] irData = {"9", "9", "9", "9"};
+int iterationCount = 0;
 //int[][] gridLayout = new int[4][4];
 
 //int gridLayout[][] =
@@ -85,7 +86,7 @@ void setup() {
   
   // Text input for topological commands
   cp5.addTextfield("textInput").setPosition(400, 450).setSize(200, 40).setAutoClear(false);
-  cp5.addBang("Submit").setPosition(400, 500).setSize(80, 40); 
+  cp5.addBang("topologicalSubmit").setPosition(400, 500).setSize(80, 40); 
   
   // Text input for goal position
   cp5.addTextfield("textInputGoal").setPosition(100, 450).setSize(200, 40).setAutoClear(false);
@@ -344,6 +345,9 @@ void beginToLocalize(){
     myPort.write('9');
     myPort.write('\n');
     
+    //delay(300);
+    //myPort.clear();
+    
     possibleCoords1[0][iteration+1] = possibleCoords1[0][iteration]-1;
     possibleCoords1[1][iteration+1] = possibleCoords1[1][iteration];
     possibleCoords2[0][iteration+1] = possibleCoords2[0][iteration]-1;
@@ -365,20 +369,20 @@ void beginToLocalize(){
     
     
     if(obstacleNum != gridLayout[i1][j1]){
-      robotX = i2;
-      robotY = j2;
-      robot2X = possibleCoords2[0][0];
-      robot2Y = possibleCoords2[1][0];
+      robotY = i2;
+      robotX = j2;
+      robot2Y = possibleCoords2[0][0];
+      robot2X = possibleCoords2[1][0];
       localized = true;
     }
     
     // check 2nd position option
     
     if(obstacleNum != gridLayout[i2][j2]){
-      robotX = i1;
-      robotY = j1;
-      robot2X = possibleCoords1[0][0];
-      robot2Y = possibleCoords1[1][0];
+      robotY = i1;
+      robotX = j1;
+      robot2Y = possibleCoords1[0][0];
+      robot2X = possibleCoords1[1][0];
       localized = true;
     }
 
@@ -389,6 +393,10 @@ void beginToLocalize(){
   
 }
 
+/* The getObstacleNumFromRobot method sends the robot a command to send sensor
+* data, then reads the data and uses the getObstacleNumber helper method to
+* determine the obstacle number at the robot's current location.
+*/
 int getObstacleNumFromRobot(){
   
   // request ir sensor data from the robot
@@ -396,28 +404,42 @@ int getObstacleNumFromRobot(){
   myPort.write('\n');
   
   boolean keepReading = true;
+
   int i = 0;
-  delay(4000);
+  delay(5000);
   
-  while(keepReading){   
+  while(keepReading){
+    
   
   val = myPort.readStringUntil('\n');
   val = trim(val);
   if (val != null) {
+    
     println(val);
     
     if(i < 4){
       
       irData[i] = val;
       i++;
+      if(i==3 && iterationCount == 3){
+        keepReading = false;
+        irData[0] = "9";
+        println("break");
+      }
     }
     if(i >= 4){
+      // keep reading from the serial until we have 4 values
       keepReading = false;
+      
     }
     
    }
     
   }
+  
+  iterationCount++;
+  print("iteration count: ");
+  println(iterationCount);
   
   int obstacleNum = getObstacleNumber();
   print("Obstacle Number: ");
@@ -426,7 +448,10 @@ int getObstacleNumFromRobot(){
   
 }
 
-
+/* The findPositionOptions method compares the obstacle number obtained
+* from the robot's IR readings to the encoded map of the world, and
+* then determines all the possible locations the robot could be.
+*/
 void findPositionOptions(int obstacleNum){
   for(int i =0; i < 4; i++){
     for(int j = 0; j < 4; j++){
@@ -457,6 +482,11 @@ void findPositionOptions(int obstacleNum){
   
 }
 
+
+/* The getObstacleNumber checks the most recent set of IR data
+* from the robot and determines the toplogical obstacle number
+* of the square based on that data. It then returns the number.
+*/
 int getObstacleNumber(){
   int obstacleNum = 15;
   boolean frontOpen = false;
@@ -526,7 +556,10 @@ int getObstacleNumber(){
   return obstacleNum;
 }
 
-
+/* The createWavefront method calculates the wavefront number
+* using manhattan distance for each square on the map based on
+* the robot's current goal.
+*/
 void createWavefront(){
  
   for (int i = 0; i < 4; i++){
@@ -544,50 +577,64 @@ void createWavefront(){
 
 /********* Topological Path Following *********/
 
-
-void Submit() {
+/* The topologicalSubmit method is called whenever the button for
+* topological path following is pressed. It then reads the input
+* from the textbox and sends the corresponding commands to the robot.
+*/
+void topologicalSubmit() {
+  
+  // read in text input
   print("the following text was submitted :");
   input = cp5.get(Textfield.class,"textInput").getText();
   println(" textInput = " + input);
   char currentChar;
+  
+  // determine command to send to the robot
   // s=1,l=2,r=3,t=4
   for(int i = 0; i < input.length(); i++){
     currentChar = input.charAt(i);
    
-    if (currentChar == 'S'){
+    if (currentChar == 'S'){ // Start
     myPort.write('1');
     }
-    else if (currentChar == 'L'){
+    else if (currentChar == 'L'){ // Left
     myPort.write('2');
     }
-    else if (currentChar == 'R'){
+    else if (currentChar == 'R'){ // Right
     myPort.write('3');
     }
-    else{
+    else { // Terminate
     myPort.write('4');
     }
+    
     myPort.write(currentChar);
     println(currentChar);
     
-    
   }
-  
 }
 
 /********* GUI Draw Methods *********/
 
+
+/* The drawRobot method draws a circle on the screen to represent the robot during
+* localization, mapping, and path planning.
+*/
 void drawRobot(){
-  
   circle(gridXOffset+(robotX*50)+boxWidth/2,gridYOffset+(robotY*50)+boxWidth/2, 30);
-  
 }
 
+/* The drawStartRobot method is used by the localization behavior to draw a circle
+* on the map where the robot started in its localization.
+*/
 void drawStartRobot(){
-  
   circle(gridXOffset+(robot2X*50)+boxWidth/2,gridYOffset+(robot2Y*50)+boxWidth/2, 30);
-  
 }
 
+
+/* The drawLineFromClick method uses the number of times a map square has been
+* clicked to determine the corresponding topolagical map number and draw the
+* appropriate walls.
+*/
 void drawLineFromClick(int clickNumber, int row, int column){
   
   switch(clickNumber) {
@@ -660,18 +707,25 @@ void drawLineFromClick(int clickNumber, int row, int column){
   
 }
 
-
+/* The drawHorizontalLine method draws a line on the GUI at the 
+* given row and column of the map.
+*/
 void drawHorizontalLine(int row, int col){
   strokeWeight(4);
   line((col*boxWidth)+gridXOffset, (row*boxWidth)+gridYOffset, ((col+1)*boxWidth)+gridXOffset, ((row)*boxWidth)+gridYOffset);
 }
 
+/* The drawVerticalLine method draws a line on the GUI at the 
+* given row and column of the map.
+*/
 void drawVerticalLine(int row, int col){
   strokeWeight(4);
   line((col*boxWidth)+gridXOffset, (row*boxWidth)+gridYOffset, ((col)*boxWidth)+gridXOffset, ((row+1)*boxWidth)+gridYOffset);
 }
 
-
+/* The displayMap method takes in a 2D array of rectangles and
+* draws them all on the window.
+*/
 void displayMap( PShape[][] map) {
 
   for ( int i= 0; i< 4; i++) {
@@ -683,8 +737,10 @@ void displayMap( PShape[][] map) {
 }
 
 
-
-
+/* The getMouselocation determines which map square the mouse
+* is currently in and returns the row and column of the square.
+* If the mouse is not in the map, it returns [-1, -1].
+*/
 int[] getMouseLocation(){
   int x = mouseX;
   int y = mouseY;

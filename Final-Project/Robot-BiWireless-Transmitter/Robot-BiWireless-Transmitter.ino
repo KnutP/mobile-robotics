@@ -103,6 +103,7 @@ void loop() {
   else if (!transmit) {
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();//start listening for data;
+//    radio.flush();
 
     
 
