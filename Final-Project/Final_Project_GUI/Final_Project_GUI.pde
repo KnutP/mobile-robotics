@@ -1,48 +1,46 @@
 /* Final_Project_GUI
 *  Authors: Knut Peterson, Garrett Jacobs
-*  Last edited: 2/22/2020
+*  Modified: 2/22/2020
 *  This program provides the GUI and decision making for Topological Path Following,
 *  Metric Path Planning, Localization, and Mapping.
 */
 
 import processing.serial.*;
 Serial myPort;
-String val;
-PShape[][] map = new PShape[4][4]; 
-PFont font;
-String[] irData = {"9", "9", "9", "9"};
-int iterationCount = 0;
 
+import controlP5.*;
+ControlP5 cp5;
+
+// Occupancy Grid
 //int gridLayout[][] =
 //    {
-//      // Occupancy Grid
 //      {11, 15, 13,  3},
 //      {10, 15, 15, 10},
 //      { 8,  5,  5,  2},
 //      {14, 15, 15, 14}
 //    };
-    
+
+// Topological map
 int gridLayout[][] =
     {
-      // Topological
       { 9,  1,  7, 11},
       {14,  8,  5,  2},
       { 9,  6,  9,  6},
       {14, 13,  6, 15}
     };
 
+// Localization Map
 //int gridLayout[][] =
 //    {
-//      // Localization
 //      { 9,  5,  1,  7},
 //      {10, 15, 10, 15},
 //      {10, 15, 10, 15},
 //      {14, 15, 14, 15}
 //    };
-    
+
+// Default Map for Mapmaking
 //int gridLayout[][] =
 //    {
-//      // Map making
 //      {15, 15, 15, 15},
 //      {15, 15, 15, 15},
 //      {15, 15, 15, 15},
@@ -54,13 +52,13 @@ int gridXOffset = 250;
 int gridYOffset = 100;
 int boxWidth = 50;
 
-// start positions for drawing the robot and
-// the
+// positions for drawing the robot and
 int robotX = -1;
 int robotY  = -1;
 int robot2X = -10;
 int robot2Y  = -10;
 
+// global variables referenced throughout the program
 int goalX = -1;
 int goalY = -1;
 int lastDirection = 1;
@@ -68,26 +66,23 @@ String input;
 String lastVal = "";
 int manhattanNumber=0;
 int[][] wavefrontGrid = new int[4][4];
+String val;
+PShape[][] map = new PShape[4][4]; 
+PFont font;
+String[] irData = {"9", "9", "9", "9"};
+int iterationCount = 0;
 
-
+// array initialization for localization
 int possibleCoords1[][] =
     {
-      
       { -1,  -1,  -1, -1},
       {-1,  -1,  -1,  -1},
     };
 int possibleCoords2[][] =
     {
-      
       { -1,  -1,  -1, -1},
       {-1,  -1,  -1,  -1},
     };
-
-import controlP5.*;
-ControlP5 cp5;
-
-String textValue = "";
-Textfield myTextfield;
 
 
 void setup() {
@@ -417,7 +412,7 @@ void followPath(){
     // write commands to the robot and update wavefront grid
     if(directionToDrive==0){
       // north
-      //myPort.write('5');
+      myPort.write('5');
       println("moved north");
       wavefrontGrid[robotX][robotY] = 99;
       robotY += -1;
@@ -431,27 +426,27 @@ void followPath(){
     }
     else if(directionToDrive==2){
       // east
-      //myPort.write('7');
+      myPort.write('7');
       println("moved east");
       wavefrontGrid[robotX][robotY] = 99;
       robotX += 1;
     }
     else if(directionToDrive==3){
       // west
-      //myPort.write('8');
+      myPort.write('8');
       println("moved west");
       wavefrontGrid[robotX][robotY] = 99;
       robotX += -1;
     }
     
-    //myPort.write('\n');
+    myPort.write('\n');
   
   }
   
   // tell the robot to execute all the commands once the path is fully planned
   if((robotX == goalX && robotY == goalY) && robotX != -1){
-    //myPort.write('9');
-    //myPort.write('\n');
+    myPort.write('9');
+    myPort.write('\n');
   }
   
 }
