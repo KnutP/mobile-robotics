@@ -1,34 +1,14 @@
-/*Robot-BiWireless.ino
-  Authors: Carlotta Berry
-  modified: 02/10/17
-  This program will show how to use the Arduino Mega on the robot with the Arduino Uno
-  attached to the robot to create bi-directional wireless communication.  This will be used
-  to send topological path commands from the laptop to the robot, also to send start and goal positions
-  from the laptop to the robot, to receive localization information from the robot to the laptop, and
-  to receive a map from the robot to the laptop
-  For testing:
-    - You can connect both devices to your computer
-    - open up 2 instances of the Arduino IDE and put the same program on both
-    - upload Mega send code to the robot microcontroller
-    - upload Uno receive code on the laptop microcontroller
-    - open both serial monitors on your laptop and test the communication
+/*Robot-BiWireless-Robot.ino
+  Authors: Knut Peterson, Garrett Jacobs
+  Modified: 02/10/17
+  This program handles the execution of commands sent to the robot via the GUI in Processing.
+  There are two types of behaviors:
+  Transmission: When in transmission mode, the program will read the 4 IR sensors and send the
+  data to the GUI.
+  Reception: When in reception mode, the robot receives commands from the GUI and executes them.
+  The commands it can parse are:
+  Switching to transmission mode, drive forward, turn to a compass angle, or execute a metric path.
 
-*** HARDWARE CONNECTIONS *****
-   https://www.arduino.cc/en/Hacking/PinMapping2560
-   Arduino MEGA nRF24L01 connections  *********ROBOT CONNECTION ******************
-    CE  pin 7         CSN   pin 8
-    VCC 3.3 V         GND GND
-    MISO  pin 50      MOSI  pin 51
-    SCK pin 52
-
-   http://arduino-info.wikispaces.com/Nrf24L01-2.4GHz-HowTo
-   http://www.theengineeringprojects.com/2015/07/interfacing-arduino-nrf24l01.html
-
-   Arduino Uno nRF24L01 connections *************LAPTOP CONNECTION **************
-   CE  pin 7        CSN   pin 8
-   VCC 3.3 V        GND GND
-   MOSI pin 11      MISO pin 12
-   SCK pin 13
 */
 
 #include <SPI.h>//include serial peripheral interface library
@@ -63,17 +43,12 @@ int metricIncomingIndex = 0;
 
 uint8_t outgoingIRData[1];
 
-
-// NEW STUFF, erase once we actually have stuff to send to robot
-
 char val; // Data received from the serial port
 int ledPin = 13; // Set the pin to digital I/O 13
 boolean ledState = LOW; //to toggle our LED
 
 enum RobotDirection {N, S, E, W};
 RobotDirection robotDirection = N;
-
-
 
 //define pin numbers
 const int rtStepPin = 44; //right stepper motor step pin (pin 44 for wireless)
@@ -94,15 +69,14 @@ MultiStepper steppers;//create instance to control multiple steppers at the same
 #define stepperEnFalse true //variable for disabling stepper motor
 
 double motorSpeed = 200;
+
+// variables for PD control
 double lError = 0;
 double rError = 0;
-
 double lPrevError = 0;
 double rPrevError = 0;
-
 double currentTime = 0;
 double lastTime = 0;
-
 double drEdt = 0;
 double dlEdt = 0;
 
@@ -150,18 +124,13 @@ void setup() {
     Serial.println("***********************************");
   }
 
-
-  // NEW STUFF to be rid of once we have stuff to send
-  pinMode(ledPin, OUTPUT); // Set pin as OUTPUT
-
 }
 
 void loop() {
 
   if (transmit) {
+    // change to transmitting data
     radio.openWritingPipe(pipe);//open up writing pipe
-
-
     delay(50);
     radio.stopListening();
     delay(150);
@@ -172,91 +141,86 @@ void loop() {
     double rDist = irRead(2);
     double lDist = irRead(3);
     delay(150);
-    
+
+    // read and send front sensor data
     if (fDist > 12) {
       outgoingIRData[0] = 5;
-    }
-    else {
+    } else {
       outgoingIRData[0] = 9;
     }
-
     delay(150);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
     Serial.println(outgoingIRData[0]);
 
+    // read and send back sensor data
     if (bDist > 12) {
       outgoingIRData[0] = 6;
-    }
-    else {
+    } else {
       outgoingIRData[0] = 9;
     }
     delay(150);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
     Serial.println(outgoingIRData[0]);
 
+    // read and send right sensor data
     if (rDist > 12) {
       outgoingIRData[0] = 7;
-
-    }
-    else {
+    } else {
       outgoingIRData[0] = 9;
     }
     delay(150);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
     Serial.println(outgoingIRData[0]);
 
+    // read and send left sensor data
     if (lDist > 12) {
       outgoingIRData[0] = 8;
-    }
-    else {
+    } else {
       outgoingIRData[0] = 9;
-
     }
     delay(150);
     radio.write(&outgoingIRData, sizeof(outgoingIRData)); // send sensor data
     Serial.println(outgoingIRData[0]);
 
+    // switch back to receiving data
     transmit = false;
   }
 
   if (!transmit) {
-    
+
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();//start listening for data;
-
-    //delay(500);
     
     while (radio.available()) {
-     
+      
+      // read incoming commands from the transmitter
       radio.read(&incoming, 1);
 
+      // if we haven't received a command to execute,
+      // keep track of commands that have been sent
       if (metricIncomingIndex != 9) {
         metricIncoming[metricIncomingIndex] = incoming[0];
         metricIncomingIndex += 1;
-        Serial.println("in metric");
       }
       if (incoming[0] == 9) {
         driveMetricPath();
         metricIncomingIndex = 0;
       }
 
+
       if (incoming[0] > 0) {
-
-
-        ledState = !ledState; //flip the ledState
-        digitalWrite(ledPin, ledState);
 
         //****** Topological ******\\
 
-        if (incoming[0] == 1) //if we get a 1
-        {
-          //          Serial.println("Got a 1 (S)");
-          //          Serial.println("Got a 1");
+        // if we get a 1, transmit sensor data on next iteration
+        if (incoming[0] == 1){
+          Serial.println("Got a 1");
           transmit = true;
         }
-        if (incoming[0] == 2) //if we get a 1
-        {
-          //          Serial.println("Got a 2 (L)");
+
+        // if we get a 2, follow wall until we can turn left, then do so
+        if (incoming[0] == 2){
+          
           while (irRead(3) < 15) {
             rightWallFollow();
           }
@@ -264,10 +228,12 @@ void loop() {
           goToAngle(90);
           forward(15);
           delay(300);
+          
         }
-        if (incoming[0] == 3) //if we get a 1
+
+        // if we get a 3, follow wall until we can turn right, then do so
+        if (incoming[0] == 3)
         {
-          //          Serial.println("Got a 3 (R)");
           while (irRead(2) < 15) {
             leftWallFollow();
 
@@ -276,70 +242,69 @@ void loop() {
           goToAngle(-90);
           forward(15);
           delay(300);
+          
         }
-        if (incoming[0] == 4) //if we get a 1
-        {
-          //          Serial.println("Got a 4 (T)");
-          // Uncomment for topological path following
+
+        // if we get a 4, drive forward one square
+        if (incoming[0] == 4){
 //          while (irRead(0) > 6) {
 //            rightWallFollow();
 //          }
 //          stop();
-
-          // Uncomment for map making
-          forward(17);
-          Serial.println("moved forward");
+            forward(17);
         }
-
-        //****** Localization ******\\
-
-
+        
         delay(100);
+        
       }
     }//end while
-
-
   }
   delay(100);//wait so the data is readable
 }
 
 
+/* The driveMetricPath method executes a list of commands sent by
+ *  the GUI to follow a planned metric path.
+ */
 void driveMetricPath() {
   char current;
 
   for (int i = 0; i < 9; i++) {
     current = metricIncoming[i];
 
-    if (current == 5) //if we get a 5
-    {
-            Serial.println("got a 5 (N)");
+    // if we get a 5, drive north
+    if (current == 5){
       turnToNorth();
-//      forward(17);
+      forward(17);
     }
-    if (current == 6) //if we get a 6
-    {
-            Serial.println("got a 6 (S)");
+
+    // if we get a 6, drive south
+    if (current == 6){
       turnToSouth();
-//      forward(17);
+      forward(17);
     }
-    if (current == 7) //if we get a 7
-    {
-            Serial.println("got a 7 (E)");
+
+    // if we get a 7, drive east
+    if (current == 7){
       turnToEast();
-//      forward(17);
+      forward(17);
     }
-    if (current == 8) //if we get an 8
-    {
-            Serial.println("got an 8 (W)");
+
+    // if we get an 8, drive west
+    if (current == 8){
       turnToWest();
-//      forward(17);
+      forward(17);
     }
 
+    // reset commands once they are executed
     metricIncoming[i] = 99;
-
   }
 }
 
+
+/* The turnToNorth method decides how far to turn to reach North
+ *  based on the robot's current orientation, then executes the turn
+ */
 void turnToNorth() {
 
   if (robotDirection == N) {
@@ -353,9 +318,12 @@ void turnToNorth() {
   }
 
   robotDirection = N;
-
 }
 
+
+/* The turnToSouth method decides how far to turn to reach South
+ *  based on the robot's current orientation, then executes the turn
+ */
 void turnToSouth() {
 
   if (robotDirection == N) {
@@ -369,9 +337,12 @@ void turnToSouth() {
   }
 
   robotDirection = S;
-
 }
 
+
+/* The turnToEast method decides how far to turn to reach East
+ *  based on the robot's current orientation, then executes the turn
+ */
 void turnToEast() {
 
   if (robotDirection == N) {
@@ -385,9 +356,12 @@ void turnToEast() {
   }
 
   robotDirection = E;
-
 }
 
+
+/* The turnToWest method decides how far to turn to reach West
+ *  based on the robot's current orientation, then executes the turn
+ */
 void turnToWest() {
 
   if (robotDirection == N) {
@@ -401,13 +375,11 @@ void turnToWest() {
   }
 
   robotDirection = W;
-
 }
 
 
-
 /* irRead is a helper function that reads the irSensor value at the given pin,
-    converts the distance to inches, and returns the value.
+ * converts the distance to inches, and returns the value.
 */
 double irRead(int pin) {
   int value = 0;
@@ -475,7 +447,7 @@ void goToAngle(int angle) {
 }
 
 
-/*This function, runToStop(), will run the robot until the target is achieved and
+/* This function, runToStop(), will run the robot until the target is achieved and
    then stop it
 */
 void runToStop ( void ) {
@@ -497,6 +469,7 @@ void runToStop ( void ) {
     }
   }
 }
+
 
 /*
     aggressiveKid has the robot move until he is within
@@ -530,6 +503,7 @@ void stop() {
   stepperLeft.stop();//stop left motor
 }
 
+
 /*
     Follow a wall on the right side of the robot using PD control
 */
@@ -560,6 +534,10 @@ void rightWallFollow() {
 
 }
 
+
+/*
+    Follow a wall on the left side of the robot using PD control
+*/
 void leftWallFollow() {
 
   digitalWrite(redLED, LOW);
@@ -585,7 +563,8 @@ void leftWallFollow() {
   }
 }
 
-
+/* Update errors for the wall following behaviors using the IR sensors
+ */
 void updateError() {
 
   double rDist = irRead(2);

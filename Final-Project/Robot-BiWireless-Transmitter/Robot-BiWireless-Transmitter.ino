@@ -1,34 +1,13 @@
-/*Robot-BiWireless.ino
-  Authors: Carlotta Berry
-  modified: 02/10/17
-  This program will show how to use the Arduino Mega on the robot with the Arduino Uno
-  attached to the robot to create bi-directional wireless communication.  This will be used
-  to send topological path commands from the laptop to the robot, also to send start and goal positions
-  from the laptop to the robot, to receive localization information from the robot to the laptop, and
-  to receive a map from the robot to the laptop
-  For testing:
-    - You can connect both devices to your computer
-    - open up 2 instances of the Arduino IDE and put the same program on both
-    - upload Mega send code to the robot microcontroller
-    - upload Uno receive code on the laptop microcontroller
-    - open both serial monitors on your laptop and test the communication
-
-*** HARDWARE CONNECTIONS *****
-   https://www.arduino.cc/en/Hacking/PinMapping2560
-   Arduino MEGA nRF24L01 connections  *********ROBOT CONNECTION ******************
-    CE  pin 7         CSN   pin 8
-    VCC 3.3 V         GND GND
-    MISO  pin 50      MOSI  pin 51
-    SCK pin 52
-
-   http://arduino-info.wikispaces.com/Nrf24L01-2.4GHz-HowTo
-   http://www.theengineeringprojects.com/2015/07/interfacing-arduino-nrf24l01.html
-
-   Arduino Uno nRF24L01 connections *************LAPTOP CONNECTION **************
-   CE  pin 7        CSN   pin 8
-   VCC 3.3 V        GND GND
-   MOSI pin 11      MISO pin 12
-   SCK pin 13
+/*Robot-BiWireless-Transmitter.ino
+  Authors: Knut Peterson, Garrett Jacobs
+  Modified: 02/22/2020
+  This program handles the transmission of commands sent to the robot via the GUI in Processing.
+  There are two types of behaviors:
+  Transmission: When in transmission mode, the program will read incoming commands from the Serial
+  in Processing, then send them on to the robot.
+  Reception: When in reception mode, the program listens for data from the robot, then sends it
+  to Processing over Serial.
+  Switching to transmission mode, drive forward, turn to a compass angle, or execute a metric path.
 */
 
 #include <SPI.h>//include serial peripheral interface library
@@ -69,63 +48,65 @@ void setup() {
   radio.setChannel(team_channel);//set the transmit and receive channels to avoid interference
   if (transmit) {
     radio.openWritingPipe(pipe);//open up writing pipe
-//    Serial.println("***********************************");
-//    Serial.println("....Starting nRF24L01 Transmit.....");
-//    Serial.println("***********************************");
   } else {
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();;//start listening for data;
-//    Serial.println("***********************************");
-//    Serial.println("....Starting nRF24L01 Receive.....");
-//    Serial.println("***********************************");
   }
 
 }
 
+
 void loop() {
   if (transmit) {
     radio.openWritingPipe(pipe);//open up writing pipe
+
+    // read in data from Processing
     readSerial();
-    
+
+    // send the data
     if (data[0] > 0) {
       radio.write(data, sizeof(data));
-      
+
+      // if we get a 1, stop transmitting start listening
+      // for data from the robot
       if(data[0] == 1){
         transmit = false;
       }
       
       data[0] = 0;
     }
-
-
   }
   
   else if (!transmit) {
     radio.openReadingPipe(1, pipe);//open up reading pipe
     radio.startListening();//start listening for data;
-//    radio.flush();
-
-    
 
     while (radio.available()) {
+      // read in data from the robot
       radio.read(&incoming, sizeof(incoming));
       
       if (incoming[0] > 0) {
+        // send the data to Processing
         Serial.println(incoming[0]);
         count++;
       }
       if(count == 4){
+        // once we get data from all 4 sensors, resume sending data from processing
         radio.stopListening();//start listening for data;
         count = 0;
         transmit = true;
       }
     }
-
     
   }
+  
   delay(100);//wait so the data is readable
 }
 
+
+/*  The readSerial method parses in data sent from Processing
+ *  through the Serial monitor and stores it.
+ */
 void readSerial() {
   if (Serial.available() > 0) {
     data[0] = Serial.parseInt();

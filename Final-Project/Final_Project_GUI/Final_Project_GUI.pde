@@ -1,13 +1,17 @@
+/* Final_Project_GUI
+*  Authors: Knut Peterson, Garrett Jacobs
+*  Last edited: 2/22/2020
+*  This program provides the GUI and decision making for Topological Path Following,
+*  Metric Path Planning, Localization, and Mapping.
+*/
+
 import processing.serial.*;
 Serial myPort;
 String val;
-boolean firstContact = false;
 PShape[][] map = new PShape[4][4]; 
 PFont font;
 String[] irData = {"9", "9", "9", "9"};
 int iterationCount = 0;
-
-//int[][] gridLayout = new int[4][4];
 
 //int gridLayout[][] =
 //    {
@@ -18,14 +22,14 @@ int iterationCount = 0;
 //      {14, 15, 15, 14}
 //    };
     
-//int gridLayout[][] =
-//    {
-//      // Topological
-//      { 9,  1,  7, 11},
-//      {14,  8,  5,  2},
-//      { 9,  6,  9,  6},
-//      {14, 13,  6, 15}
-//    };
+int gridLayout[][] =
+    {
+      // Topological
+      { 9,  1,  7, 11},
+      {14,  8,  5,  2},
+      { 9,  6,  9,  6},
+      {14, 13,  6, 15}
+    };
 
 //int gridLayout[][] =
 //    {
@@ -36,28 +40,30 @@ int iterationCount = 0;
 //      {14, 15, 14, 15}
 //    };
     
-int gridLayout[][] =
-    {
-      // Localization
-      {15, 15, 15, 15},
-      {15, 15, 15, 15},
-      {15, 15, 15, 15},
-      {15, 15, 15, 15}
-    };
-    
+//int gridLayout[][] =
+//    {
+//      // Map making
+//      {15, 15, 15, 15},
+//      {15, 15, 15, 15},
+//      {15, 15, 15, 15},
+//      {15, 15, 15, 15}
+//    };
 
-
+// constants for drawing the map
 int gridXOffset = 250;
 int gridYOffset = 100;
+int boxWidth = 50;
+
+// start positions for drawing the robot and
+// the
 int robotX = -1;
 int robotY  = -1;
 int robot2X = -10;
 int robot2Y  = -10;
+
 int goalX = -1;
 int goalY = -1;
 int lastDirection = 1;
-
-int boxWidth = 50;
 String input;
 String lastVal = "";
 int manhattanNumber=0;
@@ -107,15 +113,15 @@ void setup() {
   cp5.addBang("SubmitPosition").setPosition(100, 600).setSize(80, 40); 
   
   // Text input for starting localization
-  cp5.addBang("StartLocalization").setPosition(400, 625).setSize(80, 40);
+  cp5.addBang("StartLocalization").setPosition(515, 625).setSize(80, 40);
   
   // Text input for mapmaking
-  cp5.addBang("StartMapmaking").setPosition(400, 675).setSize(80, 40); 
+  cp5.addBang("StartMapmaking").setPosition(515, 675).setSize(80, 40); 
   
   
   //  initialize serial port and set the baud rate to 9600
-  myPort = new Serial(this, "COM7", 9600);
-  myPort.bufferUntil('\n'); 
+  //myPort = new Serial(this, "COM7", 9600);
+  //myPort.bufferUntil('\n'); 
   
   
   // make the grid for the map
@@ -128,8 +134,11 @@ void setup() {
  } 
 }
 
+
+/* The draw() method is the main loop for the program. It updates the GUI display,
+*  registers mouse clicks, and issues commands to the robot.
+*/
 void draw() {
-  //println("drawing");
   
   background(255); // clear the screen
   
@@ -137,14 +146,17 @@ void draw() {
   drawRobot();
   drawStartRobot();
   
+  // draw text
   fill(0);
   textFont(font, 32);
-  text("Sensor Data", 100, 400);
-  text("Commands", 400, 400);
+  text("Metric", 100, 430);
+  text("Topological", 400, 430);
   
   textFont(font, 20);
   text("Goal:", 25, 475);
   text("Robot:", 25, 575);
+  text("Localize:", 400, 650);
+  text("Make Map:", 400, 700);
     
     
   // update topological map based on clicks
@@ -187,37 +199,36 @@ void draw() {
  
  // if we have a robot position and a goal, then go to the goal
  followPath();
- 
   
 }
 
 /********* Map Making *********/
 
+/* StartMapmaking() is called whenever the mapmaking button is pressed.
+*  The function gathers sensor data from the robot and updates the map on the GUI
+*  once it completes. The robot moves from square to square and maps the entirety
+*  of the world. Note: There is a bug where the robot stops communicating and
+*  freezes after the first three iterations of making the map. We still have no
+*  idea where the bug is or why it occurs.
+*/
 void StartMapmaking(){
   robotX = 3;
   robotY = 3;
-  //int iterator =0;
   
   while(robotX != 0 || robotY != 3){
-    //while(iterator < 2){
-    //iterator++;
-    println("in the loop");
     
-    //background(255); // clear the screen
-    //displayMap(map);
-    //drawRobot();
-    
+    // get the sensor readings from the robot and save the obstacle number
     gridLayout[robotY][robotX] = getObstacleNumFromRobot();
-  
-  
+    
     int options[]={99,99,99,99};
     int obstacleNum = gridLayout[robotY][robotX];
-   
+    
+    // update list of possible locations to drive to next
     if(canMoveNorth(obstacleNum)){
       println("can move north 1");
       if(robotY-1 >0){
         println("stuff ahead");
-        if(gridLayout[robotX][robotY-1] == 15){
+        if(gridLayout[robotY-1][robotX] == 15){
           options[0] = 1;
           println("can move north");
         } 
@@ -225,7 +236,7 @@ void StartMapmaking(){
     }
     if(canMoveSouth(obstacleNum)){
       if(robotY+1 < 4){
-        if(gridLayout[robotX][robotY+1] == 15){
+        if(gridLayout[robotY+1][robotX] == 15){
           options[1] = 1;
           println("can move south");
         } 
@@ -233,7 +244,7 @@ void StartMapmaking(){
     }
     if(canMoveEast(obstacleNum)){
        if(robotX+1 < 4){
-        if(gridLayout[robotX+1][robotY] == 15){
+        if(gridLayout[robotY][robotX+1] == 15){
           options[2] = 1;
           println("can move east");
         } 
@@ -241,7 +252,7 @@ void StartMapmaking(){
     }
     if(canMoveWest(obstacleNum)){
        if(robotX-1 > 0){
-        if(gridLayout[robotX-1][robotY] == 15){
+        if(gridLayout[robotY][robotX-1] == 15){
           options[3] = 1;
           println("can move west");
         } 
@@ -251,135 +262,108 @@ void StartMapmaking(){
 
     // if we can move east and we haven't been to the square already, go there
     if(options[2]!=99){
+      turnToEast();
 
-      // turn to east
-      myPort.write('7');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
-      
-      // drive forward
-      myPort.write('4');
-      myPort.write('\n');
+      driveForward();
       println("moved east");
       robotX += 1;
       
-      // turn to north
-      myPort.write('5');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
+      delay(1000);
+      turnToNorth();
       
     } 
     // if we can move west and we haven't been to the square already, go there
     else if(options[3]!=99){
+      turnToWest();
       
-      // turn to west
-      myPort.write('8');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
-      
-      // drive forward
-      myPort.write('4');
-      myPort.write('\n');
+      driveForward();
       println("moved west");
       robotX += -1;
       
-      // turn to north
-      myPort.write('5');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
-      
+      delay(1000);
+      turnToNorth();
     } 
     // if we can move north and we haven't been to the square already, go there
     else if(options[0]!=99){
+      turnToNorth();
+      delay(1000);
       
-      // turn to north
-      myPort.write('5');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
-      
-      // drive forward
-      myPort.write('4');
-      myPort.write('\n');
+      driveForward();
       println("moved north");
       robotY += -1;
-      
     }
     // if we can move south and we haven't been to the square already, go there
     else if(options[1]!=99){
-
-      // turn to south
-      myPort.write('6');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
+      turnToSouth();
       
-      // drive forward
-      myPort.write('4');
-      myPort.write('\n');
+      driveForward();
       println("moved south");
       robotY += 1;
       
-      // turn to north
-      myPort.write('5');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
-      
+      delay(1000);
+      turnToNorth();
     }
-    
     else if(canMoveEast(obstacleNum)){
-            
-      // turn to west
-      myPort.write('8');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
+      turnToEast();
       
-      // drive forward
-      myPort.write('4');  
-      myPort.write('\n');
-      println("moved west");
+      driveForward();
+      println("moved east");
       robotX += -1;
       
-      // turn to north
-      myPort.write('5');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
+      delay(1000);
+      turnToNorth();
     } 
     else if(canMoveWest(obstacleNum)){
-      // turn to west
-      myPort.write('8');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
+      turnToWest();
       
-      // drive forward
-      myPort.write('4');
-      myPort.write('\n');
+      driveForward();
       println("moved west");
       robotX += -1;
       
-      // turn to north
-      myPort.write('5');
-      myPort.write('\n');
-      myPort.write('9');
-      myPort.write('\n');
+      delay(1000);
+      turnToNorth();
     } 
   
-  
-  
   }
-  println("broke");
-  
  
 }
 
+
+/* The following 5 methods send a command to the robot to do
+*  what the method is named (drive forward, turn to North, etc.)
+*/
+void driveForward(){
+  myPort.write('4');
+  myPort.write('\n');
+}
+
+void turnToNorth(){
+  myPort.write('5');
+  myPort.write('\n');
+  myPort.write('9');
+  myPort.write('\n');
+}
+
+void turnToEast(){
+  myPort.write('7');
+  myPort.write('\n');
+  myPort.write('9');
+  myPort.write('\n');
+}
+
+void turnToWest(){
+  myPort.write('8');
+  myPort.write('\n');
+  myPort.write('9');
+  myPort.write('\n');
+}
+
+void turnToSouth(){
+  myPort.write('6');
+  myPort.write('\n');
+  myPort.write('9');
+  myPort.write('\n');
+}
 
 
 /********* Metric Path Planning *********/
@@ -396,6 +380,7 @@ void followPath(){
     int directionToDrive = 99;
     int obstacleNum = gridLayout[robotY][robotX];
    
+    // check which ways we are able to drive
     if(canMoveNorth(obstacleNum)){
       options[0] = wavefrontGrid[robotX][robotY-1];
     }
@@ -409,69 +394,74 @@ void followPath(){
       options[3] = wavefrontGrid[robotX-1][robotY];
     }
     
+    // pick the best direction to drive based on the wavefront number
     for(int i =0; i < 4; i++){
+      
       if(options[i] < smallestNum){
-        smallestNum = options[i];
-        //becasue want to defer to turning if two numbers of equal size 
+        smallestNum = options[i]; 
         directionToDrive = i;
       }
+      
+      // prioritize turning
       if(options[i] == smallestNum){
         if(lastDirection != i){
           smallestNum = options[i];
           directionToDrive = i;
         }
       }
-        
+      
     }
     
     lastDirection = directionToDrive;
     
+    // write commands to the robot and update wavefront grid
     if(directionToDrive==0){
       // north
-      myPort.write('5');
+      //myPort.write('5');
       println("moved north");
       wavefrontGrid[robotX][robotY] = 99;
       robotY += -1;
     }
     else if(directionToDrive==1){
       // south
-      myPort.write('6');
+      //myPort.write('6');
       println("moved south");
       wavefrontGrid[robotX][robotY] = 99;
       robotY += 1;
     }
     else if(directionToDrive==2){
       // east
-      myPort.write('7');
+      //myPort.write('7');
       println("moved east");
       wavefrontGrid[robotX][robotY] = 99;
       robotX += 1;
     }
     else if(directionToDrive==3){
       // west
-      myPort.write('8');
+      //myPort.write('8');
       println("moved west");
       wavefrontGrid[robotX][robotY] = 99;
       robotX += -1;
     }
     
-    myPort.write('\n');
+    //myPort.write('\n');
   
   }
   
+  // tell the robot to execute all the commands once the path is fully planned
   if((robotX == goalX && robotY == goalY) && robotX != -1){
-    myPort.write('9');
-    myPort.write('\n');
+    //myPort.write('9');
+    //myPort.write('\n');
   }
-  
-  //delay(500);
- 
-  
   
 }
 
+
+/* The following 4 methods each check if the robot can move in a certain
+*  cardinal direction based on the topological obstacle number of the
+*  square it is currently in.
+*/
 boolean canMoveNorth(int obstacleNum){
-  
   if(obstacleNum==0 || obstacleNum==2 || obstacleNum==4 || obstacleNum==6 || obstacleNum ==8 || obstacleNum==10 || obstacleNum==12 || obstacleNum==14){
   return true;
   }
@@ -479,61 +469,67 @@ boolean canMoveNorth(int obstacleNum){
 }
 
 boolean canMoveSouth(int obstacleNum){
-  
   if(obstacleNum==0 || obstacleNum==1 || obstacleNum==2 || obstacleNum==3 || obstacleNum ==8 || obstacleNum==9 || obstacleNum==10 || obstacleNum==11){
   return true;
   }
   return false;
-  
 }
 
 boolean canMoveEast(int obstacleNum){
-  
   if(obstacleNum==0 || obstacleNum==1 || obstacleNum==4 || obstacleNum==5 || obstacleNum ==8 || obstacleNum==9 || obstacleNum==12 || obstacleNum==13){
   return true;
   }
   return false;
-  
 }
 boolean canMoveWest(int obstacleNum){
-  
   if(obstacleNum==0 || obstacleNum==1 || obstacleNum==2 || obstacleNum==3 || obstacleNum ==4 || obstacleNum==5 || obstacleNum==6 || obstacleNum==7){
   return true;
   }
   return false;
-  
 }
 
 
+/* The SubmitGoal method is called whenever the goal submission button is
+*  pressed. Then the current goal is updated and the wavefront propogation
+*  is created based on the coordinates entered into the text field.
+*/
 void SubmitGoal() {
-  print("the following goal was submitted :");
+  // read the input from the textfield
   input = cp5.get(Textfield.class,"textInputGoal").getText();
+  print("the following goal was submitted :");
   println(" textInputGoal = " + input);
+  
+  // read input and convert to int
   goalX = input.charAt(0) - '0';
   goalY = input.charAt(1) - '0';
+  
   createWavefront();
-  // how to overlap the wavefront numbers with the obsatcles and get that to work together
 }
 
+
+/* The SubmitPosition method is called whenever the robot position submission
+*  button is pressed. Then the robot position is updated based on the coordinates
+*  entered into the text field.
+*/
 void SubmitPosition() {
-  print("the following goal was submitted :");
+  // read the input from the textfield
   input = cp5.get(Textfield.class,"textInputPosition").getText();
+  print("the following goal was submitted :");
   println(" textInputPosition = " + input);
+  
+  // read the input and convert to int
   robotX = input.charAt(0) - '0';
   robotY = input.charAt(1) - '0';
 }
 
 
-
 /********* Localization *********/
 
+/* The StartLocalization method is called whenever the localization button
+*  is pressed. 
+*/
 void StartLocalization() {
-  println("begin localization");
-  beginToLocalize();
-}
-
-
-void beginToLocalize(){
+  println("beginning localization");
   
   int obstacleNum = getObstacleNumFromRobot();  
   findPositionOptions(obstacleNum);
@@ -543,15 +539,11 @@ void beginToLocalize(){
   
   while(!localized){
     
-    myPort.write('5');
+    turnToNorth();
+    driveForward();
     println("moved north");
-    myPort.write('\n');
-    myPort.write('9');
-    myPort.write('\n');
     
-    //delay(300);
-    //myPort.clear();
-    
+    // update possible locations the robot could be at
     possibleCoords1[0][iteration+1] = possibleCoords1[0][iteration]-1;
     possibleCoords1[1][iteration+1] = possibleCoords1[1][iteration];
     possibleCoords2[0][iteration+1] = possibleCoords2[0][iteration]-1;
@@ -564,14 +556,9 @@ void beginToLocalize(){
     int i1 = possibleCoords1[0][iteration+1];
     int j1 = possibleCoords1[1][iteration+1];
     int i2 = possibleCoords2[0][iteration+1];
-    int j2 = possibleCoords2[1][iteration+1];
+    int j2 = possibleCoords2[1][iteration+1];    
     
-    println(i1);
-    println(j1);
-    println(i2);
-    println(j2);
-    
-    
+    // if the obstacle number doesn't match, this option isn't viable
     if(obstacleNum != gridLayout[i1][j1]){
       robotY = i2;
       robotX = j2;
@@ -580,8 +567,7 @@ void beginToLocalize(){
       localized = true;
     }
     
-    // check 2nd position option
-    
+    // if the obstacle number doesn't match, this option isn't viable
     if(obstacleNum != gridLayout[i2][j2]){
       robotY = i1;
       robotX = j1;
@@ -592,10 +578,11 @@ void beginToLocalize(){
 
     iteration++;
   }
+  
   println("localized");
   
-  
 }
+
 
 /* The getObstacleNumFromRobot method sends the robot a command to send sensor
 * data, then reads the data and uses the getObstacleNumber helper method to
@@ -614,49 +601,35 @@ int getObstacleNumFromRobot(){
   println("getting obstacle num");
   
   while(keepReading){
+    // read data from robot
+    val = myPort.readStringUntil('\n');
+    val = trim(val);
     
-  
-  val = myPort.readStringUntil('\n');
-  val = trim(val);
-  
-  if (val != null) {
-    
-    println(val);
-    
-    if(i < 4){
+    if (val != null) {
+      println(val);
       
-      irData[i] = val;
-      i++;
-      //if(i==3 && iterationCount == 3){
-      //  keepReading = false;
-      //  irData[0] = "9";
-      //  println("break");
-      //}
-    }
-    if(i >= 4){
-      // keep reading from the serial until we have 4 values
-      keepReading = false;
+      if(i < 4){
+        irData[i] = val;
+        i++;
+      }
+      if(i >= 4){
+        // keep reading from the serial until we have 4 values
+        keepReading = false;
+      }
       
-    }
-    
    }
     
   }
-  
   iterationCount++;
-  print("iteration count: ");
-  println(iterationCount);
-  
   int obstacleNum = getObstacleNumber();
-  print("Obstacle Number: ");
-  println(obstacleNum);
+
   return obstacleNum;
   
 }
 
 /* The findPositionOptions method compares the obstacle number obtained
-* from the robot's IR readings to the encoded map of the world, and
-* then determines all the possible locations the robot could be.
+*  from the robot's IR readings to the encoded map of the world, and
+*  then determines all the possible locations the robot could be.
 */
 void findPositionOptions(int obstacleNum){
   for(int i =0; i < 4; i++){
@@ -677,20 +650,13 @@ void findPositionOptions(int obstacleNum){
       }
       
     }
-  }
-  
-  println(possibleCoords2[0][0]);
-  println(possibleCoords2[1][0]);
-
-  println(possibleCoords1[0][0]);
-  println(possibleCoords1[1][0]);
-  
+  }  
   
 }
 
 
-/* The getObstacleNumber checks the most recent set of IR data
-* from the robot and determines the toplogical obstacle number
+/* The getObstacleNumber method checks the most recent set of IR
+* data from the robot and determines the toplogical obstacle number
 * of the square based on that data. It then returns the number.
 */
 int getObstacleNumber(){
@@ -762,6 +728,7 @@ int getObstacleNumber(){
   return obstacleNum;
 }
 
+
 /* The createWavefront method calculates the wavefront number
 * using manhattan distance for each square on the map based on
 * the robot's current goal.
@@ -784,15 +751,16 @@ void createWavefront(){
 /********* Topological Path Following *********/
 
 /* The topologicalSubmit method is called whenever the button for
-* topological path following is pressed. It then reads the input
-* from the textbox and sends the corresponding commands to the robot.
+*  topological path following is pressed. It then reads the input
+*  from the textbox and sends the corresponding commands to the robot.
 */
 void topologicalSubmit() {
   
   // read in text input
-  print("the following text was submitted :");
   input = cp5.get(Textfield.class,"textInput").getText();
+  print("the following text was submitted :");
   println(" textInput = " + input);
+  
   char currentChar;
   
   // determine command to send to the robot
@@ -821,13 +789,13 @@ void topologicalSubmit() {
 
 /********* GUI Draw Methods *********/
 
-
 /* The drawRobot method draws a circle on the screen to represent the robot during
 * localization, mapping, and path planning.
 */
 void drawRobot(){
   circle(gridXOffset+(robotX*50)+boxWidth/2,gridYOffset+(robotY*50)+boxWidth/2, 30);
 }
+
 
 /* The drawStartRobot method is used by the localization behavior to draw a circle
 * on the map where the robot started in its localization.
@@ -913,6 +881,7 @@ void drawLineFromClick(int clickNumber, int row, int column){
   
 }
 
+
 /* The drawHorizontalLine method draws a line on the GUI at the 
 * given row and column of the map.
 */
@@ -921,6 +890,7 @@ void drawHorizontalLine(int row, int col){
   line((col*boxWidth)+gridXOffset, (row*boxWidth)+gridYOffset, ((col+1)*boxWidth)+gridXOffset, ((row)*boxWidth)+gridYOffset);
 }
 
+
 /* The drawVerticalLine method draws a line on the GUI at the 
 * given row and column of the map.
 */
@@ -928,6 +898,7 @@ void drawVerticalLine(int row, int col){
   strokeWeight(4);
   line((col*boxWidth)+gridXOffset, (row*boxWidth)+gridYOffset, ((col)*boxWidth)+gridXOffset, ((row+1)*boxWidth)+gridYOffset);
 }
+
 
 /* The displayMap method takes in a 2D array of rectangles and
 * draws them all on the window.
